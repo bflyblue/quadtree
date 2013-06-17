@@ -74,10 +74,29 @@ goDn d zipper =
             where k' = k - 1
 
 step :: Direction -> Zipper a -> Maybe (Zipper a)
-step N z@(Zipper _ (NWCrumb{} : _)) = goUp z >>= goDn SW
-step N z@(Zipper _ (NECrumb{} : _)) = goUp z >>= goDn SE
-step N (Zipper sw (SWCrumb k nw ne se : bs)) = Just $ Zipper nw (NWCrumb k ne sw se : bs)
-step N (Zipper se (SECrumb k nw ne sw : bs)) = Just $ Zipper ne (NECrumb k nw sw se : bs)
+step d zipper =
+    let Zipper _ (b:_) = zipper
+    in  case d of
+            N -> case b of
+                NWCrumb{} -> goUp zipper >>= step N >>= goDn SW
+                NECrumb{} -> goUp zipper >>= step N >>= goDn SE
+                SWCrumb{} -> goUp zipper >>= goDn NW
+                SECrumb{} -> goUp zipper >>= goDn NE
+            S -> case b of
+                NWCrumb{} -> goUp zipper >>= goDn SW
+                NECrumb{} -> goUp zipper >>= goDn SE
+                SWCrumb{} -> goUp zipper >>= step S >>= goDn NW
+                SECrumb{} -> goUp zipper >>= step S >>= goDn NE
+            W -> case b of
+                NWCrumb{} -> goUp zipper >>= step W >>= goDn NE
+                NECrumb{} -> goUp zipper >>= goDn NW
+                SWCrumb{} -> goUp zipper >>= step W >>= goDn SE
+                SECrumb{} -> goUp zipper >>= goDn SW
+            E -> case b of
+                NWCrumb{} -> goUp zipper >>= goDn NE
+                NECrumb{} -> goUp zipper >>= step E >>= goDn NW
+                SWCrumb{} -> goUp zipper >>= goDn SE
+                SECrumb{} -> goUp zipper >>= step E >>= goDn SW
 
 topmost :: Zipper a -> Zipper a
 topmost z = case goUp z of
