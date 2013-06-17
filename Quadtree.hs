@@ -20,6 +20,7 @@ data Crumb a = NWCrumb Int           (Quad a)
                                      (Quad a)
              | SECrumb Int  (Quad a) (Quad a)
                             (Quad a)
+             deriving (Eq, Show)
 
 data Direction = NW | NE | SW | SE | N | S | W | E | UP
                deriving (Eq, Enum, Show, Bounded)
@@ -27,6 +28,7 @@ data Direction = NW | NE | SW | SE | N | S | W | E | UP
 type Breadcrumbs a = [Crumb a]
 
 data Zipper a = Zipper (Quad a) (Breadcrumbs a)
+              deriving (Eq, Show)
 
 top :: Quad a -> Zipper a
 top q = Zipper q []
@@ -62,41 +64,42 @@ goDn d zipper =
         Zipper (Node 0 _ _ _ _) _   -> Nothing
         Zipper (Empty 0) _          -> Nothing
         Zipper (Empty k) bs         -> goDn d (Zipper emptynode bs)
-            where   emptynode = Node k' e e e e
+            where   emptynode = Node k e e e e
                     k'        = k - 1
                     e         = Empty k'
         Zipper (Node k nw ne sw se) bs ->
             case d of
-                NW -> Just $ Zipper nw (NWCrumb k' ne sw se : bs)
-                NE -> Just $ Zipper ne (NECrumb k' nw sw se : bs)
-                SW -> Just $ Zipper sw (SWCrumb k' nw ne se : bs)
-                SE -> Just $ Zipper se (SECrumb k' nw ne sw : bs)
-            where k' = k - 1
+                NW -> Just $ Zipper nw (NWCrumb k ne sw se : bs)
+                NE -> Just $ Zipper ne (NECrumb k nw sw se : bs)
+                SW -> Just $ Zipper sw (SWCrumb k nw ne se : bs)
+                SE -> Just $ Zipper se (SECrumb k nw ne sw : bs)
 
 step :: Direction -> Zipper a -> Maybe (Zipper a)
 step d zipper =
-    let Zipper _ (b:_) = zipper
-    in  case d of
-            N -> case b of
-                NWCrumb{} -> goUp zipper >>= step N >>= goDn SW
-                NECrumb{} -> goUp zipper >>= step N >>= goDn SE
-                SWCrumb{} -> goUp zipper >>= goDn NW
-                SECrumb{} -> goUp zipper >>= goDn NE
-            S -> case b of
-                NWCrumb{} -> goUp zipper >>= goDn SW
-                NECrumb{} -> goUp zipper >>= goDn SE
-                SWCrumb{} -> goUp zipper >>= step S >>= goDn NW
-                SECrumb{} -> goUp zipper >>= step S >>= goDn NE
-            W -> case b of
-                NWCrumb{} -> goUp zipper >>= step W >>= goDn NE
-                NECrumb{} -> goUp zipper >>= goDn NW
-                SWCrumb{} -> goUp zipper >>= step W >>= goDn SE
-                SECrumb{} -> goUp zipper >>= goDn SW
-            E -> case b of
-                NWCrumb{} -> goUp zipper >>= goDn NE
-                NECrumb{} -> goUp zipper >>= step E >>= goDn NW
-                SWCrumb{} -> goUp zipper >>= goDn SE
-                SECrumb{} -> goUp zipper >>= step E >>= goDn SW
+    case zipper of
+        Zipper _ []     -> Nothing
+        Zipper _ (b:_)  ->
+            case d of
+                N -> case b of
+                    NWCrumb{} -> goUp zipper >>= step N >>= goDn SW
+                    NECrumb{} -> goUp zipper >>= step N >>= goDn SE
+                    SWCrumb{} -> goUp zipper >>= goDn NW
+                    SECrumb{} -> goUp zipper >>= goDn NE
+                S -> case b of
+                    NWCrumb{} -> goUp zipper >>= goDn SW
+                    NECrumb{} -> goUp zipper >>= goDn SE
+                    SWCrumb{} -> goUp zipper >>= step S >>= goDn NW
+                    SECrumb{} -> goUp zipper >>= step S >>= goDn NE
+                W -> case b of
+                    NWCrumb{} -> goUp zipper >>= step W >>= goDn NE
+                    NECrumb{} -> goUp zipper >>= goDn NW
+                    SWCrumb{} -> goUp zipper >>= step W >>= goDn SE
+                    SECrumb{} -> goUp zipper >>= goDn SW
+                E -> case b of
+                    NWCrumb{} -> goUp zipper >>= goDn NE
+                    NECrumb{} -> goUp zipper >>= step E >>= goDn NW
+                    SWCrumb{} -> goUp zipper >>= goDn SE
+                    SECrumb{} -> goUp zipper >>= step E >>= goDn SW
 
 topmost :: Zipper a -> Zipper a
 topmost z = case goUp z of
@@ -127,16 +130,20 @@ empty :: Int -> Quad a
 empty = Empty
 
 insert :: Vec2 -> a -> Quad a -> Quad a
-insert pt val q@(Node k _ _ _ _) =
-    quad $ topmost (applyByPath insert' path (top q))
-    where   path      = pathTo pt k
+insert pt val q =
+    case q of
+        Node  k _ _ _ _ -> q' k
+        Empty k         -> q' k
+    where   q' k'     = quad $ topmost (applyByPath insert' (pathTo pt k') (top q))
             insert' _ = Leaf val
 
 delete :: Vec2 -> Quad a -> Quad a
-delete pt q@(Node k _ _ _ _) =
-    quad $ topmost (applyByPath delete' path (top q))
-    where   path      = pathTo pt k
-            delete' _ = Empty k
+delete pt q =
+    case q of
+        Node  k _ _ _ _ -> q' k
+        Empty k         -> q' k
+    where   q' k'     = quad $ topmost (applyByPath (delete' k') (pathTo pt k') (top q))
+            delete' k'' _ = Empty k''
 
 insertList :: Quad a -> [(Vec2, a)] -> Quad a
 insertList = foldl (\acc (pt,val) -> insert pt val acc)
