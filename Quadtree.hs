@@ -3,6 +3,7 @@ where
 
 import Control.Monad
 import Data.Bits
+import Data.Ratio
 
 type Vec2 = (Int, Int)
 
@@ -29,6 +30,11 @@ type Breadcrumbs a = [Crumb a]
 
 data Zipper a = Zipper (Quad a) (Breadcrumbs a)
               deriving (Eq, Show)
+
+qlevel :: Quad a -> Int
+qlevel (Node  k _ _ _ _) = k
+qlevel (Empty k)         = k
+qlevel (Leaf  _)         = 0
 
 top :: Quad a -> Zipper a
 top q = Zipper q []
@@ -74,6 +80,9 @@ goDn d zipper =
                 SW -> Just $ Zipper sw (SWCrumb k nw ne se : bs)
                 SE -> Just $ Zipper se (SECrumb k nw ne sw : bs)
 
+walk :: Zipper a -> [Direction] -> Maybe (Zipper a)
+walk = foldM (flip go)
+
 step :: Direction -> Zipper a -> Maybe (Zipper a)
 step d zipper =
     case zipper of
@@ -81,33 +90,40 @@ step d zipper =
         Zipper _ (b:_)  ->
             case d of
                 N -> case b of
-                    NWCrumb{} -> goUp zipper >>= step N >>= goDn SW
-                    NECrumb{} -> goUp zipper >>= step N >>= goDn SE
-                    SWCrumb{} -> goUp zipper >>= goDn NW
-                    SECrumb{} -> goUp zipper >>= goDn NE
+                    NWCrumb{} -> walk zipper [UP, N, SW]
+                    NECrumb{} -> walk zipper [UP, N, SE]
+                    SWCrumb{} -> walk zipper [UP, NW]
+                    SECrumb{} -> walk zipper [UP, NE]
                 S -> case b of
-                    NWCrumb{} -> goUp zipper >>= goDn SW
-                    NECrumb{} -> goUp zipper >>= goDn SE
-                    SWCrumb{} -> goUp zipper >>= step S >>= goDn NW
-                    SECrumb{} -> goUp zipper >>= step S >>= goDn NE
+                    NWCrumb{} -> walk zipper [UP, SW]
+                    NECrumb{} -> walk zipper [UP, SE]
+                    SWCrumb{} -> walk zipper [UP, S, NW]
+                    SECrumb{} -> walk zipper [UP, S, NE]
                 W -> case b of
-                    NWCrumb{} -> goUp zipper >>= step W >>= goDn NE
-                    NECrumb{} -> goUp zipper >>= goDn NW
-                    SWCrumb{} -> goUp zipper >>= step W >>= goDn SE
-                    SECrumb{} -> goUp zipper >>= goDn SW
+                    NWCrumb{} -> walk zipper [UP, W, NE]
+                    NECrumb{} -> walk zipper [UP, NW]
+                    SWCrumb{} -> walk zipper [UP, W, SE]
+                    SECrumb{} -> walk zipper [UP, SW]
                 E -> case b of
-                    NWCrumb{} -> goUp zipper >>= goDn NE
-                    NECrumb{} -> goUp zipper >>= step E >>= goDn NW
-                    SWCrumb{} -> goUp zipper >>= goDn SE
-                    SECrumb{} -> goUp zipper >>= step E >>= goDn SW
+                    NWCrumb{} -> walk zipper [UP, NE]
+                    NECrumb{} -> walk zipper [UP, E, NW]
+                    SWCrumb{} -> walk zipper [UP, SE]
+                    SECrumb{} -> walk zipper [UP, E, SW]
 
 topmost :: Zipper a -> Zipper a
-topmost z = case goUp z of
-                Just z' -> topmost z'
-                Nothing -> z
+topmost zipper =
+    case goUp zipper of
+        Just z' -> topmost z'
+        Nothing -> zipper
+
+lowest :: [Direction] -> Zipper a -> Zipper a
+lowest (d:ds) zipper =
+    case go d zipper of
+        Just z' -> lowest ds z'
+        Nothing -> zipper
 
 pathTo :: Vec2 -> Int -> [Direction]
-pathTo _     0 = []
+pathTo _        0 = []
 pathTo pt@(x,y) k =
     case p of
         (False, False) -> NW:pathTo pt nk
@@ -131,19 +147,31 @@ empty = Empty
 
 insert :: Vec2 -> a -> Quad a -> Quad a
 insert pt val q =
-    case q of
-        Node  k _ _ _ _ -> q' k
-        Empty k         -> q' k
-    where   q' k'     = quad $ topmost (applyByPath insert' (pathTo pt k') (top q))
+    quad $ topmost (applyByPath insert' (pathTo pt k) (top q))
+    where   k = qlevel q
             insert' _ = Leaf val
 
 delete :: Vec2 -> Quad a -> Quad a
 delete pt q =
-    case q of
-        Node  k _ _ _ _ -> q' k
-        Empty k         -> q' k
-    where   q' k'     = quad $ topmost (applyByPath (delete' k') (pathTo pt k') (top q))
-            delete' k'' _ = Empty k''
+    quad $ topmost (applyByPath delete' (pathTo pt k) (top q))
+    where   k = qlevel q
+            delete' _ = Empty k
 
 insertList :: Quad a -> [(Vec2, a)] -> Quad a
 insertList = foldl (\acc (pt,val) -> insert pt val acc)
+
+raytrace :: Quad a -> Vec2 -> Vec2 -> [(Vec2, a)]
+raytrace q pt (dx,dy)
+    | dx == 0 && dy == 0 = []
+    | otherwise          =
+        case q of
+            Empty _         -> []
+            Leaf  a         -> [(pt, a)]
+            Node  k _ _ _ _ ->
+                let initz = lowest (pathTo pt k) (top q) in
+                    if abs dx > abs dy
+                    then stepx initz pt (dy % dx)
+                    else stepy initz pt (dx % dy)
+    where   stepx z (x,y) y' = []
+            stepy z (x,y) x' = []
+
