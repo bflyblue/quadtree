@@ -51,14 +51,20 @@ applyByPath f (step:path) node  = collapse node'
                 SW -> node{ sw = applyByPath f path (sw node) }
                 SE -> node{ se = applyByPath f path (se node) }
 
+empty :: Int -> Quadtree a
+empty k = Quadtree k Empty
+
 insert :: Vec2 -> a -> Quadtree a -> Quadtree a
 insert pt val (Quadtree k q) =
     Quadtree k (applyByPath insert' path q)
     where   path      = pathTo pt k
             insert' _ = Leaf val
 
-empty :: Int -> Quadtree a
-empty k = Quadtree k Empty
+delete :: Vec2 -> Quadtree a -> Quadtree a
+delete pt (Quadtree k q) =
+    Quadtree k (applyByPath delete' path q)
+    where   path      = pathTo pt k
+            delete' _ = Empty
 
-fromList :: Int -> [(Vec2, a)] -> Quadtree a
-fromList k = foldl (\acc (pt,val) -> insert pt val acc) (empty k)
+insertList :: Quadtree a -> [(Vec2, a)] -> Quadtree a
+insertList = foldl (\acc (pt,val) -> insert pt val acc)
