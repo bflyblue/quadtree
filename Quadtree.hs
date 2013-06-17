@@ -31,10 +31,10 @@ type Breadcrumbs a = [Crumb a]
 data Zipper a = Zipper (Quad a) (Breadcrumbs a)
               deriving (Eq, Show)
 
-qlevel :: Quad a -> Int
-qlevel (Node  k _ _ _ _) = k
-qlevel (Empty k)         = k
-qlevel (Leaf  _)         = 0
+depth :: Quad a -> Int
+depth (Node  k _ _ _ _) = k
+depth (Empty k)         = k
+depth (Leaf  _)         = 0
 
 top :: Quad a -> Zipper a
 top q = Zipper q []
@@ -148,18 +148,19 @@ empty = Empty
 insert :: Vec2 -> a -> Quad a -> Quad a
 insert pt val q =
     quad $ topmost (applyByPath insert' (pathTo pt k) (top q))
-    where   k = qlevel q
+    where   k = depth q
             insert' _ = Leaf val
 
 delete :: Vec2 -> Quad a -> Quad a
 delete pt q =
     quad $ topmost (applyByPath delete' (pathTo pt k) (top q))
-    where   k = qlevel q
+    where   k = depth q
             delete' _ = Empty k
 
 insertList :: Quad a -> [(Vec2, a)] -> Quad a
 insertList = foldl (\acc (pt,val) -> insert pt val acc)
 
+-- XXX trying to figure this out
 raytrace :: Quad a -> Vec2 -> Vec2 -> [(Vec2, a)]
 raytrace q pt (dx,dy)
     | dx == 0 && dy == 0 = []
