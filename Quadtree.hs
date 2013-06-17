@@ -56,3 +56,9 @@ insert pt val (Quadtree k q) =
     Quadtree k (applyByPath insert' path q)
     where   path      = pathTo pt k
             insert' _ = Leaf val
+
+empty :: Int -> Quadtree a
+empty k = Quadtree k Empty
+
+fromList :: Int -> [(Vec2, a)] -> Quadtree a
+fromList k = foldl (\acc (pt,val) -> insert pt val acc) (empty k) 
