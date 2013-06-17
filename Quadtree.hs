@@ -6,12 +6,12 @@ import Data.Bits
 type Vec2 = (Int, Int)
 
 data Quadtree a = Quadtree Int (Quad a)
-                deriving (Show)
+                deriving (Eq, Show)
 
 data Quad a = Node { nw, ne, sw, se :: Quad a }
             | Leaf a
             | Empty
-            deriving (Show)
+            deriving (Eq, Show)
 
 data QDir   = NW | NE | SW | SE
             deriving (Eq, Ord, Enum, Show, Bounded)
@@ -61,4 +61,4 @@ empty :: Int -> Quadtree a
 empty k = Quadtree k Empty
 
 fromList :: Int -> [(Vec2, a)] -> Quadtree a
-fromList k = foldl (\acc (pt,val) -> insert pt val acc) (empty k) 
+fromList k = foldl (\acc (pt,val) -> insert pt val acc) (empty k)
