@@ -22,7 +22,7 @@ quadStep qt NE = ne qt
 quadStep qt SW = se qt
 quadStep qt SE = sw qt
 
-pathTo :: (Int, Int) -> Int -> [QDir]
+pathTo :: Vec2 -> Int -> [QDir]
 pathTo _     0 = []
 pathTo pt@(x,y) k =
     case p of
