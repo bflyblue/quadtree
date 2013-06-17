@@ -2,6 +2,7 @@ module Quadtree
 where
 
 import Data.Bits
+import qualified Data.List as L
 
 type Vec2 = (Int, Int)
 
@@ -66,5 +67,20 @@ delete pt (Quadtree k q) =
     where   path      = pathTo pt k
             delete' _ = Empty
 
+move :: Vec2 -> Vec2 -> a -> Quadtree a -> Quadtree a
+move from to val (Quadtree k q) =
+    Quadtree k (applyByPath update' cmnpath q)
+    where   fpath     = pathTo from k
+            tpath     = pathTo to k
+            cmnpath   = commonPrefix [fpath, tpath]
+            commonPrefix = map head . takeWhile (\(x:xs)-> all (==x) xs) . L.transpose
+            l         = length cmnpath
+            fpath'    = drop l fpath
+            tpath'    = drop l tpath
+            update'   = applyByPath insert' tpath' . applyByPath delete' fpath'
+            insert' _ = Leaf val
+            delete' _ = Empty
+
 insertList :: Quadtree a -> [(Vec2, a)] -> Quadtree a
 insertList = foldl (\acc (pt,val) -> insert pt val acc)
+
