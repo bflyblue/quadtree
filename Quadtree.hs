@@ -57,7 +57,7 @@ go W z  = step W z
 go E z  = step E z
 
 goUp :: Zipper a -> Maybe (Zipper a)
-goUp (Zipper _  [])                      = Nothing
+goUp (Zipper _  [])                        = Nothing
 goUp (Zipper nw (NWCrumb k ne sw se : bs)) = Just $ Zipper (Node k nw ne sw se) bs
 goUp (Zipper ne (NECrumb k nw sw se : bs)) = Just $ Zipper (Node k nw ne sw se) bs
 goUp (Zipper sw (SWCrumb k nw ne se : bs)) = Just $ Zipper (Node k nw ne sw se) bs
