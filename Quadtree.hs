@@ -1,7 +1,6 @@
 module Quadtree
 where
 
---import Control.Monad
 import Data.Bits
 
 type Vec2 = (Int, Int)
@@ -30,6 +29,9 @@ data Zipper a = Zipper  { quad          :: Quad a
                         , breadcrumbs   :: [Crumb a]
                         } deriving (Eq, Show)
 
+type QTrav a = Quad a -> Quad a
+type CrumbCons a = Int -> Quad a -> Quad a -> Quad a -> Crumb a
+
 depth :: Quad a -> Int
 depth Leaf{}    = 0
 depth q         = level q
@@ -37,15 +39,19 @@ depth q         = level q
 top :: Quad a -> Zipper a
 top q = Zipper q []
 
-adjust :: (Quad a -> Quad a) -> Zipper a -> Zipper a
+adjust :: QTrav a -> Zipper a -> Zipper a
 adjust f (Zipper q bs) = Zipper (f q) bs
 
-up :: Zipper a -> Maybe (Zipper a)
-up (Zipper _  [])                            = Nothing
-up (Zipper nw' (NWCrumb k ne' sw' se' : bs)) = Just $ Zipper (Node k nw' ne' sw' se') bs
-up (Zipper ne' (NECrumb k nw' sw' se' : bs)) = Just $ Zipper (Node k nw' ne' sw' se') bs
-up (Zipper sw' (SWCrumb k nw' ne' se' : bs)) = Just $ Zipper (Node k nw' ne' sw' se') bs
-up (Zipper se' (SECrumb k nw' ne' sw' : bs)) = Just $ Zipper (Node k nw' ne' sw' se') bs
+up :: Eq a => Zipper a -> Maybe (Zipper a)
+up zipper =
+    case zipper of
+        Zipper _  []                            -> Nothing
+        Zipper nw' (NWCrumb k ne' sw' se' : bs) -> Just $ Zipper (n k nw' ne' sw' se') bs
+        Zipper ne' (NECrumb k nw' sw' se' : bs) -> Just $ Zipper (n k nw' ne' sw' se') bs
+        Zipper sw' (SWCrumb k nw' ne' se' : bs) -> Just $ Zipper (n k nw' ne' sw' se') bs
+        Zipper se' (SECrumb k nw' ne' sw' : bs) -> Just $ Zipper (n k nw' ne' sw' se') bs
+    where
+        n k a b c d = emptycollapse k (Node k a b c d)
 
 emptynode :: Int -> Quad a
 emptynode k = Node k e e e e
@@ -55,9 +61,13 @@ emptyexpand :: Quad a -> Quad a
 emptyexpand Empty{level=k} = emptynode k
 emptyexpand q              = q
 
-dn :: (Quad a -> Quad a) -> (Int -> Quad a -> Quad a -> Quad a -> Crumb a) ->
-      (Quad a -> Quad a) -> (Quad a -> Quad a) -> (Quad a -> Quad a) -> Zipper a ->
-      Maybe (Zipper a)
+emptycollapse :: Eq a => Int -> Quad a -> Quad a
+emptycollapse k q =
+    if q == emptynode k
+    then Empty{level=k}
+    else q
+
+dn :: QTrav a -> CrumbCons a -> QTrav a -> QTrav a -> QTrav a -> Zipper a -> Maybe (Zipper a)
 dn q b b1 b2 b3 (Zipper node bs) =
     case k of
         0 -> Nothing
@@ -74,7 +84,7 @@ ne = dn _ne NECrumb _nw _sw _se
 sw = dn _sw SWCrumb _nw _ne _se
 se = dn _se SECrumb _nw _ne _sw
 
-topmost :: Zipper a -> Zipper a
+topmost :: Eq a => Zipper a -> Zipper a
 topmost zipper =
     case up zipper of
         Just z' -> topmost z'
@@ -96,7 +106,7 @@ pathTo pt@(x,y) k z =
 empty :: Int -> Quad a
 empty = Empty
 
-modify :: Vec2 -> (Quad a -> Quad a) -> Quad a -> Quad a
+modify :: Eq a => Vec2 -> (Quad a -> Quad a) -> Quad a -> Quad a
 modify pt f q =
     case path (top q) of
         Just q' -> (quad . topmost . adjust f) q'
@@ -104,14 +114,14 @@ modify pt f q =
     where   k = depth q
             path = pathTo pt k
 
-insert :: Vec2 -> a -> Quad a -> Quad a
+insert :: Eq a => Vec2 -> a -> Quad a -> Quad a
 insert pt val = modify pt insert'
     where   insert' _ = Leaf val
 
-delete :: Vec2 -> Quad a -> Quad a
+delete :: Eq a => Vec2 -> Quad a -> Quad a
 delete pt q = modify pt delete' q
     where   k = depth q
             delete' _ = Empty k
 
-insertList :: Quad a -> [(Vec2, a)] -> Quad a
+insertList :: Eq a => Quad a -> [(Vec2, a)] -> Quad a
 insertList = foldl (\acc (pt,val) -> insert pt val acc)
