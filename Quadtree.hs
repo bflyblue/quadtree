@@ -51,29 +51,22 @@ emptynode :: Int -> Quad a
 emptynode k = Node k e e e e
     where e = Empty (k - 1)
 
-level0 :: Zipper a -> Maybe a -> Maybe a
-level0 (Zipper Leaf{}         _) _ = Nothing
-level0 (Zipper Node{level=0}  _) _ = Nothing
-level0 (Zipper Empty{level=0} _) _ = Nothing
-level0 _                         r = r
-
-emptyexpand :: (Zipper a -> a) -> Zipper a -> a
-emptyexpand r (Zipper Empty{level=k} bs) = r (Zipper (emptynode k) bs)
-emptyexpand r zipper                     = r zipper
+emptyexpand :: Quad a -> Quad a
+emptyexpand Empty{level=k} = emptynode k
+emptyexpand q              = q
 
 dn :: (Quad a -> Quad a) -> (Int -> Quad a -> Quad a -> Quad a -> Crumb a) ->
       (Quad a -> Quad a) -> (Quad a -> Quad a) -> (Quad a -> Quad a) -> Zipper a ->
       Maybe (Zipper a)
-dn _ _ _  _  _  (Zipper Leaf{}         _)   = Nothing
-dn _ _ _  _  _  (Zipper Node{level=0}  _)   = Nothing
-dn _ _ _  _  _  (Zipper Empty{level=0} _)   = Nothing
-dn q b b1 b2 b3 (Zipper Empty{level=k} bs)  = dn q b b1 b2 b3 (Zipper (emptynode k) bs)
-dn q b b1 b2 b3 (Zipper node           bs)  =
-    Just $ Zipper (q node) (b k b1' b2' b3':bs)
+dn q b b1 b2 b3 (Zipper node bs) =
+    case k of
+        0 -> Nothing
+        _ -> Just $ Zipper (q n') (b k b1' b2' b3':bs)
     where   k   = level node
-            b1' = b1 node
-            b2' = b2 node
-            b3' = b3 node
+            n'  = emptyexpand node
+            b1' = b1 n'
+            b2' = b2 n'
+            b3' = b3 n'
 
 nw,ne,sw,se :: Zipper a -> Maybe (Zipper a)
 nw = dn _nw NWCrumb _ne _sw _se
