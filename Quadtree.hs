@@ -111,6 +111,9 @@ pathTo pt@(x,y) k z =
             y' = testBit y nk
             p  = (x',y')
 
+empty :: Int -> Quad a
+empty = Empty
+
 modify :: Vec2 -> (Quad a -> Quad a) -> Quad a -> Quad a
 modify pt f q =
     case at pt f (top q) of
