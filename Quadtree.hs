@@ -26,10 +26,9 @@ data Crumb a = NWCrumb Int           (Quad a)
 data Direction = NW | NE | SW | SE | N | S | W | E | UP
                deriving (Eq, Enum, Show, Bounded)
 
-type Breadcrumbs a = [Crumb a]
-
-data Zipper a = Zipper (Quad a) (Breadcrumbs a)
-              deriving (Eq, Show)
+data Zipper a = Zipper  { quad          :: Quad a
+                        , breadcrumbs   :: [Crumb a]
+                        } deriving (Eq, Show)
 
 depth :: Quad a -> Int
 depth (Node  k _ _ _ _) = k
@@ -38,9 +37,6 @@ depth (Leaf  _)         = 0
 
 top :: Quad a -> Zipper a
 top q = Zipper q []
-
-quad :: Zipper a -> Quad a
-quad (Zipper q _) = q
 
 modify :: (Quad a -> Quad a) -> Zipper a -> Zipper a
 modify f (Zipper q bs) = Zipper (f q) bs
