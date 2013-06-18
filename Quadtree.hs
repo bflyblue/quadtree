@@ -47,12 +47,12 @@ emptyexpand Empty{level=k} = Node k e e e e where e = Empty (k - 1)
 emptyexpand q              = q
 
 emptycollapse :: Quad a -> Quad a
-emptycollapse n =
-    case n of
+emptycollapse q =
+    case q of
         Node k a b c d  ->  if all isEmpty [a,b,c,d]
                             then Empty{level=k}
-                            else n
-        _               -> n
+                            else q
+        _               -> q
     where   isEmpty Empty{} = True
             isEmpty _       = False
 
@@ -71,12 +71,10 @@ dn :: QTrav a -> CrumbCons a -> QTrav a -> QTrav a -> QTrav a -> Zipper a -> May
 dn q b b1 b2 b3 (Zipper node bs) =
     case k of
         0 -> Nothing
-        _ -> Just $ Zipper (q n') (b k b1' b2' b3':bs)
+        _ -> Just $ Zipper (q n') (b':bs)
     where   k   = level node
             n'  = emptyexpand node
-            b1' = b1 n'
-            b2' = b2 n'
-            b3' = b3 n'
+            b'  = b k (b1 n') (b2 n') (b3 n')
 
 nw,ne,sw,se :: Zipper a -> Maybe (Zipper a)
 nw = dn _nw NWCrumb _ne _sw _se
@@ -95,7 +93,7 @@ pathTo _        0 z = return z
 pathTo pt@(x,y) k z =
     case p of
         (False, False) -> nw z >>= pathTo pt nk
-        (True , False) -> se z >>= pathTo pt nk
+        (True , False) -> ne z >>= pathTo pt nk
         (False, True ) -> sw z >>= pathTo pt nk
         (True , True ) -> se z >>= pathTo pt nk
     where   nk = k - 1
