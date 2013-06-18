@@ -42,24 +42,19 @@ top q = Zipper q []
 adjust :: QTrav a -> Zipper a -> Zipper a
 adjust f (Zipper q bs) = Zipper (f q) bs
 
-emptynode :: Int -> Quad a
-emptynode k = Node k e e e e
-    where e = Empty (k - 1)
-
-isEmpty :: Quad a -> Bool
-isEmpty Empty{} = True
-isEmpty _       = False
-
 emptyexpand :: Quad a -> Quad a
-emptyexpand Empty{level=k} = emptynode k
+emptyexpand Empty{level=k} = Node k e e e e where e = Empty (k - 1)
 emptyexpand q              = q
 
 emptycollapse :: Quad a -> Quad a
-emptycollapse n@(Node k a b c d) =
-    if all isEmpty [a,b,c,d]
-    then Empty{level=k}
-    else n
-emptycollapse n = n
+emptycollapse n =
+    case n of
+        Node k a b c d  ->  if all isEmpty [a,b,c,d]
+                            then Empty{level=k}
+                            else n
+        _               -> n
+    where   isEmpty Empty{} = True
+            isEmpty _       = False
 
 up :: Zipper a -> Maybe (Zipper a)
 up zipper =
