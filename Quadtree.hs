@@ -1,16 +1,19 @@
 module Quadtree
 where
 
-import Control.Monad
+--import Control.Monad
 import Data.Bits
-import Data.Ratio
 
 type Vec2 = (Int, Int)
 
-data Quad a = Node Int      (Quad a) (Quad a)
-                            (Quad a) (Quad a)
-            | Empty Int
-            | Leaf a
+data Quad a = Node  { level     :: Int
+                    , _nw, _ne,
+                      _sw, _se  :: Quad a
+                    }
+            | Empty { level     :: Int
+                    }
+            | Leaf  { value     :: a
+                    }
             deriving (Eq, Show)
 
 data Crumb a = NWCrumb Int           (Quad a)
@@ -23,17 +26,13 @@ data Crumb a = NWCrumb Int           (Quad a)
                             (Quad a)
              deriving (Eq, Show)
 
-data Direction = NW | NE | SW | SE | N | S | W | E | UP
-               deriving (Eq, Enum, Show, Bounded)
-
 data Zipper a = Zipper  { quad          :: Quad a
                         , breadcrumbs   :: [Crumb a]
                         } deriving (Eq, Show)
 
 depth :: Quad a -> Int
-depth (Node  k _ _ _ _) = k
-depth (Empty k)         = k
-depth (Leaf  _)         = 0
+depth Leaf{}    = 0
+depth q         = level q
 
 top :: Quad a -> Zipper a
 top q = Zipper q []
@@ -41,91 +40,61 @@ top q = Zipper q []
 adjust :: (Quad a -> Quad a) -> Zipper a -> Zipper a
 adjust f (Zipper q bs) = Zipper (f q) bs
 
-go :: Direction -> Zipper a -> Maybe (Zipper a)
-go UP z = goUp z
-go NW z = goDn NW z
-go NE z = goDn NE z
-go SW z = goDn SW z
-go SE z = goDn SE z
-go N z  = step N z
-go S z  = step S z
-go W z  = step W z
-go E z  = step E z
+up :: Zipper a -> Maybe (Zipper a)
+up (Zipper _  [])                            = Nothing
+up (Zipper nw' (NWCrumb k ne' sw' se' : bs)) = Just $ Zipper (Node k nw' ne' sw' se') bs
+up (Zipper ne' (NECrumb k nw' sw' se' : bs)) = Just $ Zipper (Node k nw' ne' sw' se') bs
+up (Zipper sw' (SWCrumb k nw' ne' se' : bs)) = Just $ Zipper (Node k nw' ne' sw' se') bs
+up (Zipper se' (SECrumb k nw' ne' sw' : bs)) = Just $ Zipper (Node k nw' ne' sw' se') bs
 
-goUp :: Zipper a -> Maybe (Zipper a)
-goUp (Zipper _  [])                        = Nothing
-goUp (Zipper nw (NWCrumb k ne sw se : bs)) = Just $ Zipper (Node k nw ne sw se) bs
-goUp (Zipper ne (NECrumb k nw sw se : bs)) = Just $ Zipper (Node k nw ne sw se) bs
-goUp (Zipper sw (SWCrumb k nw ne se : bs)) = Just $ Zipper (Node k nw ne sw se) bs
-goUp (Zipper se (SECrumb k nw ne sw : bs)) = Just $ Zipper (Node k nw ne sw se) bs
+emptynode :: Int -> Quad a
+emptynode k = Node k e e e e
+    where e = Empty (k - 1)
 
-goDn :: Direction -> Zipper a -> Maybe (Zipper a)
-goDn d zipper =
-    case zipper of
-        Zipper (Leaf _) _           -> Nothing
-        Zipper (Node 0 _ _ _ _) _   -> Nothing
-        Zipper (Empty 0) _          -> Nothing
-        Zipper (Empty k) bs         -> goDn d (Zipper emptynode bs)
-            where   emptynode = Node k e e e e
-                    k'        = k - 1
-                    e         = Empty k'
-        Zipper (Node k nw ne sw se) bs ->
-            case d of
-                NW -> Just $ Zipper nw (NWCrumb k ne sw se : bs)
-                NE -> Just $ Zipper ne (NECrumb k nw sw se : bs)
-                SW -> Just $ Zipper sw (SWCrumb k nw ne se : bs)
-                SE -> Just $ Zipper se (SECrumb k nw ne sw : bs)
+level0 :: Zipper a -> Maybe a -> Maybe a
+level0 (Zipper Leaf{}         _) _ = Nothing
+level0 (Zipper Node{level=0}  _) _ = Nothing
+level0 (Zipper Empty{level=0} _) _ = Nothing
+level0 _                         r = r
 
-walk :: Zipper a -> [Direction] -> Maybe (Zipper a)
-walk = foldM (flip go)
+emptyexpand :: (Zipper a -> a) -> Zipper a -> a
+emptyexpand r (Zipper Empty{level=k} bs) = r (Zipper (emptynode k) bs)
+emptyexpand r zipper                     = r zipper
 
-step :: Direction -> Zipper a -> Maybe (Zipper a)
-step d zipper =
-    case zipper of
-        Zipper _ []     -> Nothing
-        Zipper _ (b:_)  ->
-            case d of
-                N -> case b of
-                    NWCrumb{} -> walk zipper [UP, N, SW]
-                    NECrumb{} -> walk zipper [UP, N, SE]
-                    SWCrumb{} -> walk zipper [UP, NW]
-                    SECrumb{} -> walk zipper [UP, NE]
-                S -> case b of
-                    NWCrumb{} -> walk zipper [UP, SW]
-                    NECrumb{} -> walk zipper [UP, SE]
-                    SWCrumb{} -> walk zipper [UP, S, NW]
-                    SECrumb{} -> walk zipper [UP, S, NE]
-                W -> case b of
-                    NWCrumb{} -> walk zipper [UP, W, NE]
-                    NECrumb{} -> walk zipper [UP, NW]
-                    SWCrumb{} -> walk zipper [UP, W, SE]
-                    SECrumb{} -> walk zipper [UP, SW]
-                E -> case b of
-                    NWCrumb{} -> walk zipper [UP, NE]
-                    NECrumb{} -> walk zipper [UP, E, NW]
-                    SWCrumb{} -> walk zipper [UP, SE]
-                    SECrumb{} -> walk zipper [UP, E, SW]
+dn :: (Quad a -> Quad a) -> (Int -> Quad a -> Quad a -> Quad a -> Crumb a) ->
+      (Quad a -> Quad a) -> (Quad a -> Quad a) -> (Quad a -> Quad a) -> Zipper a ->
+      Maybe (Zipper a)
+dn _ _ _  _  _  (Zipper Leaf{}         _)   = Nothing
+dn _ _ _  _  _  (Zipper Node{level=0}  _)   = Nothing
+dn _ _ _  _  _  (Zipper Empty{level=0} _)   = Nothing
+dn q b b1 b2 b3 (Zipper Empty{level=k} bs)  = dn q b b1 b2 b3 (Zipper (emptynode k) bs)
+dn q b b1 b2 b3 (Zipper node           bs)  =
+    Just $ Zipper (q node) (b k b1' b2' b3':bs)
+    where   k   = level node
+            b1' = b1 node
+            b2' = b2 node
+            b3' = b3 node
+
+nw,ne,sw,se :: Zipper a -> Maybe (Zipper a)
+nw = dn _nw NWCrumb _ne _sw _se
+ne = dn _ne NECrumb _nw _sw _se
+sw = dn _sw SWCrumb _nw _ne _se
+se = dn _se SECrumb _nw _ne _sw
 
 topmost :: Zipper a -> Zipper a
 topmost zipper =
-    case goUp zipper of
+    case up zipper of
         Just z' -> topmost z'
         Nothing -> zipper
 
-lowest :: [Direction] -> Zipper a -> Zipper a
-lowest (d:ds) zipper =
-    case go d zipper of
-        Just z' -> lowest ds z'
-        Nothing -> zipper
-
-pathTo :: Vec2 -> Int -> [Direction]
-pathTo _        0 = []
-pathTo pt@(x,y) k =
+pathTo :: Vec2 -> Int -> Zipper a -> Maybe (Zipper a)
+pathTo _        0 z = return z
+pathTo pt@(x,y) k z =
     case p of
-        (False, False) -> NW:pathTo pt nk
-        (True , False) -> NE:pathTo pt nk
-        (False, True ) -> SW:pathTo pt nk
-        (True , True ) -> SE:pathTo pt nk
+        (False, False) -> nw z >>= pathTo pt nk
+        (True , False) -> se z >>= pathTo pt nk
+        (False, True ) -> sw z >>= pathTo pt nk
+        (True , True ) -> se z >>= pathTo pt nk
     where   nk = k - 1
             x' = testBit x nk
             y' = testBit y nk
@@ -136,10 +105,11 @@ empty = Empty
 
 modify :: Vec2 -> (Quad a -> Quad a) -> Quad a -> Quad a
 modify pt f q =
-    case walk (top q) (pathTo pt k) of
+    case path (top q) of
         Just q' -> (quad . topmost . adjust f) q'
         Nothing -> q
     where   k = depth q
+            path = pathTo pt k
 
 insert :: Vec2 -> a -> Quad a -> Quad a
 insert pt val = modify pt insert'
@@ -152,20 +122,3 @@ delete pt q = modify pt delete' q
 
 insertList :: Quad a -> [(Vec2, a)] -> Quad a
 insertList = foldl (\acc (pt,val) -> insert pt val acc)
-
--- XXX trying to figure this out
-raytrace :: Quad a -> Vec2 -> Vec2 -> [(Vec2, a)]
-raytrace q pt (dx,dy)
-    | dx == 0 && dy == 0 = []
-    | otherwise          =
-        case q of
-            Empty _         -> []
-            Leaf  a         -> [(pt, a)]
-            Node  k _ _ _ _ ->
-                let initz = lowest (pathTo pt k) (top q) in
-                    if abs dx > abs dy
-                    then stepx initz pt (dy % dx)
-                    else stepy initz pt (dx % dy)
-    where   stepx z (x,y) y' = []
-            stepy z (x,y) x' = []
-
