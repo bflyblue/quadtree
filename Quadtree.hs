@@ -1,6 +1,7 @@
 module Quadtree
 where
 
+import Control.Monad
 import Data.Bits
 
 type Vec2 = (Int, Int)
@@ -39,7 +40,7 @@ depth q         = level q
 top :: Quad a -> Zipper a
 top q = Zipper q []
 
-adjust :: QTrav a -> Zipper a -> Zipper a
+adjust :: (Quad a -> Quad a) -> Zipper a -> Zipper a
 adjust f (Zipper q bs) = Zipper (f q) bs
 
 emptyexpand :: Quad a -> Quad a
@@ -72,7 +73,7 @@ dn q b b1 b2 b3 (Zipper node bs) =
     case k of
         0 -> Nothing
         _ -> Just $ Zipper (q n') (b':bs)
-    where   k   = level node
+    where   k   = depth node
             n'  = emptyexpand node
             b'  = b k (b1 n') (b2 n') (b3 n')
 
@@ -88,6 +89,15 @@ topmost zipper =
         Just z' -> topmost z'
         Nothing -> zipper
 
+to :: Vec2 -> Zipper a -> Maybe (Zipper a)
+to pt zipper =
+    let t = topmost zipper
+        k = (depth.quad) t
+    in pathTo pt k t
+
+at :: Vec2 -> (Quad a -> Quad a) -> Zipper a -> Maybe (Zipper a)
+at pt f zipper = liftM (adjust f) (to pt zipper)
+
 pathTo :: Vec2 -> Int -> Zipper a -> Maybe (Zipper a)
 pathTo _        0 z = return z
 pathTo pt@(x,y) k z =
@@ -101,16 +111,12 @@ pathTo pt@(x,y) k z =
             y' = testBit y nk
             p  = (x',y')
 
-empty :: Int -> Quad a
-empty = Empty
-
 modify :: Vec2 -> (Quad a -> Quad a) -> Quad a -> Quad a
 modify pt f q =
-    case path (top q) of
-        Just q' -> (quad . topmost . adjust f) q'
+    case at pt f (top q) of
+        Just z' -> root z'
         Nothing -> q
-    where   k = depth q
-            path = pathTo pt k
+    where root = quad.topmost
 
 insert :: Vec2 -> a -> Quad a -> Quad a
 insert pt val = modify pt insert'
