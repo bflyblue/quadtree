@@ -38,8 +38,8 @@ depth (Leaf  _)         = 0
 top :: Quad a -> Zipper a
 top q = Zipper q []
 
-modify :: (Quad a -> Quad a) -> Zipper a -> Zipper a
-modify f (Zipper q bs) = Zipper (f q) bs
+xmodify :: (Quad a -> Quad a) -> Zipper a -> Zipper a
+xmodify f (Zipper q bs) = Zipper (f q) bs
 
 go :: Direction -> Zipper a -> Maybe (Zipper a)
 go UP z = goUp z
@@ -135,21 +135,25 @@ applyByPath :: (Quad a -> Quad a) -> [Direction] -> Zipper a -> Zipper a
 applyByPath f path zipper =
     let dest = foldM (flip go) zipper path
     in  case dest of
-            Just q  -> modify f q
+            Just q  -> xmodify f q
             Nothing -> zipper
 
 empty :: Int -> Quad a
 empty = Empty
 
-insert :: Vec2 -> a -> Quad a -> Quad a
-insert pt val q =
-    quad $ topmost (applyByPath insert' (pathTo pt k) (top q))
+modify :: Vec2 -> (Quad a -> Quad a) -> Quad a -> Quad a
+modify pt f q =
+    case walk (top q) (pathTo pt k) of
+        Just q' -> (quad . topmost . xmodify f) q'
+        Nothing -> q
     where   k = depth q
-            insert' _ = Leaf val
+
+insert :: Vec2 -> a -> Quad a -> Quad a
+insert pt val = modify pt insert'
+    where   insert' _ = Leaf val
 
 delete :: Vec2 -> Quad a -> Quad a
-delete pt q =
-    quad $ topmost (applyByPath delete' (pathTo pt k) (top q))
+delete pt q = modify pt delete' q
     where   k = depth q
             delete' _ = Empty k
 
