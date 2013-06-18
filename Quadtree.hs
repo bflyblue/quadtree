@@ -131,13 +131,6 @@ pathTo pt@(x,y) k =
             y' = testBit y nk
             p  = (x',y')
 
-applyByPath :: (Quad a -> Quad a) -> [Direction] -> Zipper a -> Zipper a
-applyByPath f path zipper =
-    let dest = foldM (flip go) zipper path
-    in  case dest of
-            Just q  -> adjust f q
-            Nothing -> zipper
-
 empty :: Int -> Quad a
 empty = Empty
 
