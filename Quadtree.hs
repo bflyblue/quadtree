@@ -10,7 +10,7 @@ data Direction = NW | NE | SW | SE deriving (Eq, Ord, Bounded, Enum, Show)
 data Quad a = Node (Quad a) (Quad a) (Quad a) (Quad a)
             | Empty
             | Leaf a
-            | All (Quad a)
+            | All a
             deriving (Eq, Show)
 
 data Crumb a = Crumb Direction (Quad a) (Quad a) (Quad a)
@@ -24,29 +24,30 @@ data Zipper a = Zipper  { quad          :: Quad a
 up :: (Ord a) => Zipper a -> Maybe (Zipper a)
 up (Zipper _ _ []    ) = Nothing
 up (Zipper q h (b:bs)) =
-    let q' = case b of  Crumb NW ne' sw' se' -> collapse q   ne' sw' se'
-                        Crumb NE nw' sw' se' -> collapse nw' q   sw' se'
-                        Crumb SW nw' ne' se' -> collapse nw' ne' q   se'
-                        Crumb SE nw' ne' sw' -> collapse nw' ne' sw' q
+    let q' = case b of  Crumb NW ne sw se -> collapse q  ne sw se
+                        Crumb NE nw sw se -> collapse nw q  sw se
+                        Crumb SW nw ne se -> collapse nw ne q  se
+                        Crumb SE nw ne sw -> collapse nw ne sw q
     in Just $ Zipper q' h' bs
     where   collapse Empty Empty Empty Empty = Empty
-            collapse s     t     u     v     | s == t && t == u && u == v = All s
-            collapse nw'   ne'   sw'   se'   = Node nw' ne' sw' se'
+            collapse (Leaf s) (Leaf t) (Leaf u) (Leaf v)
+                | s == t && t == u && u == v = All s
+            collapse nw    ne    sw    se    = Node nw ne sw se
             h' = h + 1
 
 dn :: Direction -> Zipper a -> Maybe (Zipper a)
 dn _ (Zipper _ 0 _ ) = Nothing
 dn d (Zipper q h bc) =
     case expand q of
-        (Node nw' ne' sw' se') ->
-            let (q',b') = case d of NW -> (nw', Crumb NW ne' sw' se')
-                                    NE -> (ne', Crumb NE nw' sw' se')
-                                    SW -> (sw', Crumb SW nw' ne' se')
-                                    SE -> (se', Crumb SE nw' ne' sw')
+        (Node nw ne sw se) ->
+            let (q',b') = case d of NW -> (nw, Crumb NW ne sw se)
+                                    NE -> (ne, Crumb NE nw sw se)
+                                    SW -> (sw, Crumb SW nw ne se)
+                                    SE -> (se, Crumb SE nw ne sw)
             in Just $ Zipper q' h' (b':bc)
         _   -> Nothing
-    where   expand Empty    = Node Empty Empty Empty Empty
-            expand (All a)  = Node a     a     a     a
+    where   expand Empty    = Node Empty    Empty    Empty    Empty
+            expand (All a)  = Node (Leaf a) (Leaf a) (Leaf a) (Leaf a)
             expand nonempty = nonempty
             h'  = h - 1
 
