@@ -35,7 +35,7 @@ up (Zipper q h (b:bs)) =
 dn :: Direction -> Zipper a -> Maybe (Zipper a)
 dn _ (Zipper _ 0 _ ) = Nothing
 dn d (Zipper q h bc) =
-    case eq of
+    case expand q of
         (Node nw' ne' sw' se') ->
             let (q',b') = case d of NW -> (nw', Crumb NW ne' sw' se')
                                     NE -> (ne', Crumb NE nw' sw' se')
@@ -45,7 +45,6 @@ dn d (Zipper q h bc) =
         _   -> Nothing
     where   expand Empty    = Node Empty Empty Empty Empty
             expand nonempty = nonempty
-            eq  = expand q
             h'  = h - 1
 
 step :: (Bool, Bool) -> Direction
