@@ -28,26 +28,23 @@ data Zipper a = Zipper  { quad          :: Quad a
                         } deriving (Eq, Show)
 
 up :: Zipper a -> Maybe (Zipper a)
-up (Zipper q (x,y) h bc) =
-    case bc of
-        []      -> Nothing
-        (b:bs)  ->
-            case b of
-                NWCrumb ne' sw' se' -> Just $ Zipper (collapse q   ne' sw' se') p' h' bs
-                NECrumb nw' sw' se' -> Just $ Zipper (collapse nw' q   sw' se') p' h' bs
-                SWCrumb nw' ne' se' -> Just $ Zipper (collapse nw' ne' q   se') p' h' bs
-                SECrumb nw' ne' sw' -> Just $ Zipper (collapse nw' ne' sw' q  ) p' h' bs
+up (Zipper _ _     _ []    ) = Nothing
+up (Zipper q (x,y) h (b:bs)) = Just $ Zipper q' p' h' bs
     where   collapse Empty Empty Empty Empty = Empty
             collapse nw'   ne'   sw'   se'   = Node nw' ne' sw' se'
             h' = h + 1
             p' = (clearBit x h, clearBit y h)
+            q' = case b of
+                    NWCrumb ne' sw' se' -> collapse q   ne' sw' se'
+                    NECrumb nw' sw' se' -> collapse nw' q   sw' se'
+                    SWCrumb nw' ne' se' -> collapse nw' ne' q   se'
+                    SECrumb nw' ne' sw' -> collapse nw' ne' sw' q
 
 dn :: (Quad a -> Quad a) -> (Quad a -> Crumb a) -> Vec2 -> Zipper a -> Maybe (Zipper a)
+dn _    _        _      (Zipper _ _     0 _ ) = Nothing
 dn qsel mkcrumb (xb,yb) (Zipper q (x,y) h bc) =
-    case (h, q) of
-        (0, _)      -> Nothing
-        (_, Node{}) -> Just $ Zipper q' p' h' b'
-        _           -> Nothing
+    case q of Node{}    -> Just $ Zipper q' p' h' b'
+              _         -> Nothing
     where   expand Empty    = Node Empty Empty Empty Empty
             expand nonempty = nonempty
             setbit a ab     = a .|. (ab * bit h')
