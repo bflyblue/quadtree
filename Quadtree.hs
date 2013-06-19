@@ -41,8 +41,7 @@ collapse n                                          = n
 
 modifyPath :: Eq a => (Quad a -> Quad a) -> [Direction] -> Quad a -> Quad a
 modifyPath f []     = f
-modifyPath f (d:ds) =
-    collapse . modify' . expand
+modifyPath f (d:ds) = collapse . modify' . expand
     where modify' (Node nw ne sw se) =
             case d of   NW -> Node (modifyPath f ds nw) ne sw se
                         NE -> Node nw (modifyPath f ds ne) sw se
