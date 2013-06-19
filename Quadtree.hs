@@ -43,20 +43,19 @@ up (Zipper q (x,y) h bc) =
             p' = (clearBit x h, clearBit y h)
 
 dn :: (Quad a -> Quad a) -> (Quad a -> Crumb a) -> Vec2 -> Zipper a -> Maybe (Zipper a)
-dn qsel mkcrumb (xb,yb) zipper =
-    let (q,q')      = ((expand.quad) zipper, qsel q)
-        (x,y)       = pos zipper
-        (x',y')     = (setbit x xb, setbit y yb)
-        (h,h')      = (height zipper, h - 1)
-        (b,b')      = (breadcrumbs zipper, mkcrumb q:b)
-        setbit a ab = a .|. (ab * bit h')
-    in case (h, q) of
-            (0, _)      -> Nothing
-            (_, Node{}) -> Just $ Zipper q' (x',y') h' b'
-            _           -> Nothing
-
+dn qsel mkcrumb (xb,yb) (Zipper q (x,y) h bc) =
+    case (h, q) of
+        (0, _)      -> Nothing
+        (_, Node{}) -> Just $ Zipper q' p' h' b'
+        _           -> Nothing
     where   expand Empty    = Node Empty Empty Empty Empty
             expand nonempty = nonempty
+            setbit a ab     = a .|. (ab * bit h')
+            eq  = expand q
+            q'  = qsel eq
+            p'  = (setbit x xb, setbit y yb)
+            h'  = h - 1
+            b'  = mkcrumb eq:bc
 
 nw, ne, sw, se :: Zipper a -> Maybe (Zipper a)
 nw = dn _nw nwCrumb (0,0)
