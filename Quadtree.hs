@@ -27,11 +27,20 @@ data Zipper a = Zipper  { quad          :: Quad a
                         , breadcrumbs   :: [Crumb a]
                         } deriving (Eq, Show)
 
-nw, ne, sw, se :: Zipper a -> Maybe (Zipper a)
-nw = dn _nw nwCrumb (0,0)
-ne = dn _ne neCrumb (1,0)
-sw = dn _sw swCrumb (0,1)
-se = dn _se seCrumb (1,1)
+up :: Zipper a -> Maybe (Zipper a)
+up (Zipper q (x,y) h bc) =
+    case bc of
+        []      -> Nothing
+        (b:bs)  ->
+            case b of
+                NWCrumb ne' sw' se' -> Just $ Zipper (collapse q   ne' sw' se') p' h' bs
+                NECrumb nw' sw' se' -> Just $ Zipper (collapse nw' q   sw' se') p' h' bs
+                SWCrumb nw' ne' se' -> Just $ Zipper (collapse nw' ne' q   se') p' h' bs
+                SECrumb nw' ne' sw' -> Just $ Zipper (collapse nw' ne' sw' q  ) p' h' bs
+    where   collapse Empty Empty Empty Empty = Empty
+            collapse nw'   ne'   sw'   se'   = Node nw' ne' sw' se'
+            h' = h + 1
+            p' = (clearBit x h, clearBit y h)
 
 dn :: (Quad a -> Quad a) -> (Quad a -> Crumb a) -> Vec2 -> Zipper a -> Maybe (Zipper a)
 dn qsel mkcrumb (xb,yb) zipper =
@@ -49,29 +58,20 @@ dn qsel mkcrumb (xb,yb) zipper =
     where   expand Empty    = Node Empty Empty Empty Empty
             expand nonempty = nonempty
 
+nw, ne, sw, se :: Zipper a -> Maybe (Zipper a)
+nw = dn _nw nwCrumb (0,0)
+ne = dn _ne neCrumb (1,0)
+sw = dn _sw swCrumb (0,1)
+se = dn _se seCrumb (1,1)
+
+makeCrumb :: (Quad a -> Quad a -> Quad a -> Crumb a) -> (Quad a -> Quad a) -> (Quad a -> Quad a) -> (Quad a -> Quad a) -> Quad a -> Crumb a
+makeCrumb c b1 b2 b3 q = c (b1 q) (b2 q) (b3 q)
+
 nwCrumb, neCrumb, swCrumb, seCrumb :: Quad a -> Crumb a
 nwCrumb = makeCrumb NWCrumb _ne _sw _se
 neCrumb = makeCrumb NECrumb _nw _sw _se
 swCrumb = makeCrumb SWCrumb _nw _ne _se
 seCrumb = makeCrumb SECrumb _nw _ne _sw
-
-makeCrumb :: (Quad a -> Quad a -> Quad a -> Crumb a) -> (Quad a -> Quad a) -> (Quad a -> Quad a) -> (Quad a -> Quad a) -> Quad a -> Crumb a
-makeCrumb c b1 b2 b3 q = c (b1 q) (b2 q) (b3 q)
-
-up :: Zipper a -> Maybe (Zipper a)
-up (Zipper q (x,y) h bc) =
-    case bc of
-        []      -> Nothing
-        (b:bs)  ->
-            case b of
-                NWCrumb ne' sw' se' -> Just $ Zipper (collapse q   ne' sw' se') p' h' bs
-                NECrumb nw' sw' se' -> Just $ Zipper (collapse nw' q   sw' se') p' h' bs
-                SWCrumb nw' ne' se' -> Just $ Zipper (collapse nw' ne' q   se') p' h' bs
-                SECrumb nw' ne' sw' -> Just $ Zipper (collapse nw' ne' sw' q  ) p' h' bs
-    where   collapse Empty Empty Empty Empty = Empty
-            collapse nw'   ne'   sw'   se'   = Node nw' ne' sw' se'
-            h' = h + 1
-            p' = (clearBit x h, clearBit y h)
 
 top :: Zipper a -> Maybe (Zipper a)
 top zipper =
