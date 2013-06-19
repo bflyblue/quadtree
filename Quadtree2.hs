@@ -52,12 +52,10 @@ dn d (Zipper q h bc) =
             h'  = h - 1
 
 step :: (Bool, Bool) -> Direction
-step (x,y) =
-    case (x,y) of
-        (False, False) -> NW
-        (True , False) -> NE
-        (False, True ) -> SW
-        (True , True ) -> SE
+step (False, False) = NW
+step (True , False) = NE
+step (False, True ) = SW
+step (True , True ) = SE
 
 pathForPos :: Int -> Vec2 -> [Direction]
 pathForPos 0 _     = []
