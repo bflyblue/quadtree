@@ -21,12 +21,15 @@ step (True , False) = NE
 step (False, True ) = SW
 step (True , True ) = SE
 
-path :: Int -> Vec2 -> [Direction]
-path 0 _     = []
-path h (x,y) = step (xb,yb):path h' (x,y)
+at :: Vec2 -> Int -> [Direction]
+at _     0 = []
+at (x,y) h = step (xb,yb):at (x,y) h'
     where   h' = h - 1
             xb = testBit x h'
             yb = testBit y h'
+
+path :: [Direction] -> Int -> [Direction]
+path ds _ = ds
 
 expand :: Quad a -> Quad a
 expand Empty    = Node Empty Empty Empty Empty
@@ -48,18 +51,11 @@ modifyPath f (d:ds) = collapse . modify' . expand
                         SW -> Node nw ne (modifyPath f ds sw) se
                         SE -> Node nw ne sw (modifyPath f ds se)
 
-modify :: Eq a => (Quad a -> Quad a) -> Vec2 -> Quadtree a -> Quadtree a
-modify f pos (Quadtree h q) = Quadtree h $ modifyPath f (path h pos) q
+modify :: Eq a => (Quad a -> Quad a) -> (Int -> [Direction]) -> Quadtree a -> Quadtree a
+modify f pos (Quadtree h q) = Quadtree h $ modifyPath f (pos h) q
 
-insertPath :: Eq a => a -> [Direction] -> Quad a -> Quad a
-insertPath v = modifyPath (\_ -> Leaf v)
-
-insert :: Eq a => a -> Vec2 -> Quadtree a -> Quadtree a
+insert :: Eq a => a -> (Int -> [Direction]) -> Quadtree a -> Quadtree a
 insert v = modify (\_ -> Leaf v)
 
-deletePath :: Eq a => [Direction] -> Quad a -> Quad a
-deletePath = modifyPath (const Empty)
-
-delete :: Eq a => Vec2 -> Quadtree a -> Quadtree a
+delete :: Eq a => (Int -> [Direction]) -> Quadtree a -> Quadtree a
 delete = modify (const Empty)
-
