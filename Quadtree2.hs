@@ -45,13 +45,12 @@ go UP z               = up z
 go _  (Zipper _ 0 _ ) = Nothing
 go d  (Zipper q h bc) =
     case expand q of
-        (Node nw ne sw se)
-            -> let (q',b') = case d of NW -> (nw, Crumb NW ne sw se)
-                                       NE -> (ne, Crumb NE nw sw se)
-                                       SW -> (sw, Crumb SW nw ne se)
-                                       SE -> (se, Crumb SE nw ne sw)
-               in  Just $ Zipper q' (h - 1) (b':bc)
-        _   -> Nothing
+        (Node nw ne sw se) -> let (q',b') = case d of NW -> (nw, Crumb NW ne sw se)
+                                                      NE -> (ne, Crumb NE nw sw se)
+                                                      SW -> (sw, Crumb SW nw ne se)
+                                                      SE -> (se, Crumb SE nw ne sw)
+                              in  Just $ Zipper q' (h - 1) (b':bc)
+        _                  -> Nothing
 
 walk :: Ord a => Zipper a -> [Direction] -> Maybe (Zipper a)
 walk = foldM (flip go)
