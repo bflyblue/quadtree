@@ -1,16 +1,16 @@
 module Quadtree
 where
 
+import Control.Monad
 import Data.Bits
 
 type Vec2 = (Int, Int)
 
-data Direction = NW | NE | SW | SE deriving (Eq, Ord, Bounded, Enum, Show)
+data Direction = UP | NW | NE | SW | SE deriving (Eq, Ord, Bounded, Enum, Show)
 
 data Quad a = Node (Quad a) (Quad a) (Quad a) (Quad a)
             | Empty
             | Leaf a
-            | All a
             deriving (Eq, Show)
 
 data Crumb a = Crumb Direction (Quad a) (Quad a) (Quad a)
@@ -21,35 +21,40 @@ data Zipper a = Zipper  { quad          :: Quad a
                         , breadcrumbs   :: [Crumb a]
                         } deriving (Eq, Show)
 
-up :: (Ord a) => Zipper a -> Maybe (Zipper a)
-up (Zipper _ _ []    ) = Nothing
-up (Zipper q h (b:bs)) =
-    let q' = case b of  Crumb NW ne sw se -> collapse q  ne sw se
-                        Crumb NE nw sw se -> collapse nw q  sw se
-                        Crumb SW nw ne se -> collapse nw ne q  se
-                        Crumb SE nw ne sw -> collapse nw ne sw q
-    in Just $ Zipper q' h' bs
-    where   collapse Empty Empty Empty Empty = Empty
-            collapse (Leaf s) (Leaf t) (Leaf u) (Leaf v)
-                | s == t && t == u && u == v = All s
-            collapse nw    ne    sw    se    = Node nw ne sw se
-            h' = h + 1
+collapse :: Eq a => Quad a -> Quad a
+collapse (Node a b c d) | all (==a) [b,c,d] = a
+collapse other                              = other
 
-dn :: Direction -> Zipper a -> Maybe (Zipper a)
-dn _ (Zipper _ 0 _ ) = Nothing
-dn d (Zipper q h bc) =
+expand :: Quad a -> Quad a
+expand Empty    = Node Empty    Empty    Empty    Empty
+expand (Leaf a) = Node (Leaf a) (Leaf a) (Leaf a) (Leaf a)
+expand other    = other
+
+up :: Ord a => Zipper a -> Maybe (Zipper a)
+up (Zipper q h []    ) = Just $ Zipper (Node q Empty Empty Empty) (h + 1) []
+up (Zipper q h (b:bs)) =
+    let q' = (collapse . decrumb) b
+    in  Just $ Zipper q' (h + 1) bs
+    where   decrumb (Crumb NW ne sw se) = Node q  ne sw se
+            decrumb (Crumb NE nw sw se) = Node nw q  sw se
+            decrumb (Crumb SW nw ne se) = Node nw ne q  se
+            decrumb (Crumb SE nw ne sw) = Node nw ne sw q
+
+go :: Ord a => Direction -> Zipper a -> Maybe (Zipper a)
+go UP z               = up z
+go _  (Zipper _ 0 _ ) = Nothing
+go d  (Zipper q h bc) =
     case expand q of
-        (Node nw ne sw se) ->
-            let (q',b') = case d of NW -> (nw, Crumb NW ne sw se)
-                                    NE -> (ne, Crumb NE nw sw se)
-                                    SW -> (sw, Crumb SW nw ne se)
-                                    SE -> (se, Crumb SE nw ne sw)
-            in Just $ Zipper q' h' (b':bc)
+        (Node nw ne sw se)
+            -> let (q',b') = case d of NW -> (nw, Crumb NW ne sw se)
+                                       NE -> (ne, Crumb NE nw sw se)
+                                       SW -> (sw, Crumb SW nw ne se)
+                                       SE -> (se, Crumb SE nw ne sw)
+               in  Just $ Zipper q' (h - 1) (b':bc)
         _   -> Nothing
-    where   expand Empty    = Node Empty    Empty    Empty    Empty
-            expand (All a)  = Node (Leaf a) (Leaf a) (Leaf a) (Leaf a)
-            expand nonempty = nonempty
-            h'  = h - 1
+
+walk :: Ord a => Zipper a -> [Direction] -> Maybe (Zipper a)
+walk = foldM (flip go)
 
 step :: (Bool, Bool) -> Direction
 step (False, False) = NW
@@ -69,24 +74,19 @@ pathFromZipper (Zipper _ _ bc) =
     map dir bc
     where   dir (Crumb d _ _ _) = d
 
-pathDiff :: [Direction] -> [Direction] -> ([Direction], [Direction])
-pathDiff []     ds     = ([],ds)
-pathDiff ss     []     = (ss,[])
-pathDiff (s:ss) (d:ds) = if s == d then pathDiff ss ds else (s:ss,d:ds)
+pathTo :: [Direction] -> [Direction] -> [Direction]
+pathTo []     ds     = ds
+pathTo ss     []     = map (const UP) ss
+pathTo (s:ss) (d:ds) | s == d   = pathTo ss ds
+                     |otherwise = pathTo (s:ss) [] ++ pathTo [] (d:ds)
 
-path :: (Ord a) => [Direction] -> Zipper a -> Maybe (Zipper a)
-path dest z =
-    up' undos z >>= dn' dos
-    where   (undos, dos) = pathDiff (pathFromZipper z) dest
-            up' []    z' = Just z'
-            up' (_:r) z' = up z' >>= up' r
-            dn' []    z' = Just z'
-            dn' (s:r) z' = dn s z' >>= dn' r
+path :: Ord a => [Direction] -> Zipper a -> Maybe (Zipper a)
+path dest z = walk z $ pathTo (pathFromZipper z) dest
 
-top :: (Ord a) => Zipper a -> Maybe (Zipper a)
+top :: Ord a => Zipper a -> Maybe (Zipper a)
 top = path []
 
-to :: (Ord a) => Vec2 -> Zipper a -> Maybe (Zipper a)
+to :: Ord a => Vec2 -> Zipper a -> Maybe (Zipper a)
 to p z@(Zipper _ h bc) = path dest z
     where dest = pathForPos (h + length bc) p
 
@@ -107,3 +107,6 @@ modify f (Zipper q h bc) =
     case h of
         0   -> Just (Zipper (f q) h bc)
         _   -> Nothing
+
+zipper :: Zipper a
+zipper = Zipper Empty 0 []
