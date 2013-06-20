@@ -41,9 +41,10 @@ up (Zipper q h (b:bs)) =
             decrumb (Crumb SE nw ne sw) = Node nw ne sw q
 
 go :: Ord a => Direction -> Zipper a -> Maybe (Zipper a)
-go UP z               = up z
-go _  (Zipper _ 0 _ ) = Nothing
-go d  (Zipper q h bc) =
+go UP z                   = up z
+go _  (Zipper _     0 _ ) = Nothing
+go NW (Zipper Empty h []) = Just $ Zipper Empty (h - 1) []
+go d  (Zipper q     h bc) =
     case expand q of
         (Node nw ne sw se) -> let (q',b') = case d of NW -> (nw, Crumb NW ne sw se)
                                                       NE -> (ne, Crumb NE nw sw se)
