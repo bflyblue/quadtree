@@ -2,17 +2,19 @@ module Quadtree
 where
 
 import Data.Bits
+import Data.Word
 
-type Vec2 = (Int, Int)
+type Scalar = Word
+type Vec2   = (Scalar, Scalar)
 
 data Direction = NW | NE | SW | SE deriving (Eq, Ord, Bounded, Enum, Show)
 
-data Quadtree a = Quadtree Int (Quad a)
+data Quadtree a = Quadtree !Int !(Quad a)
                 deriving (Eq, Show)
 
-data Quad a = Node (Quad a) (Quad a) (Quad a) (Quad a)
+data Quad a = Node !(Quad a) !(Quad a) !(Quad a) !(Quad a)
             | Empty
-            | Leaf a
+            | Leaf !a
             deriving (Eq, Show)
 
 expand :: Quad a -> Quad a
@@ -21,40 +23,36 @@ expand (Leaf a) = Node (Leaf a) (Leaf a) (Leaf a) (Leaf a)
 expand n        = n
 
 collapse :: Eq a => Quad a -> Quad a
-collapse (Node (Leaf a) (Leaf b) (Leaf c) (Leaf d))
-                       | a == b && b == c && c == d = Leaf a
-collapse (Node Empty    Empty    Empty    Empty   ) = Empty
-collapse n                                          = n
+collapse (Node a b c d) | all (==a) [b,c,d] = a
+collapse n                                  = n
 
-findPath :: Eq a => [Direction] -> Quad a -> Quad a
-findPath []      q                  = q
-findPath _       Empty              = Empty
-findPath _       (Leaf a)           = Leaf a
-findPath (NW:ds) (Node nw _  _  _ ) = findPath ds nw
-findPath (NE:ds) (Node _  ne _  _ ) = findPath ds ne
-findPath (SW:ds) (Node _  _  sw _ ) = findPath ds sw
-findPath (SE:ds) (Node _  _  _  se) = findPath ds se
+findQuad :: Eq a => [Direction] -> Quad a -> Quad a
+findQuad (NW:ds) (Node nw _  _  _ ) = findQuad ds nw
+findQuad (NE:ds) (Node _  ne _  _ ) = findQuad ds ne
+findQuad (SW:ds) (Node _  _  sw _ ) = findQuad ds sw
+findQuad (SE:ds) (Node _  _  _  se) = findQuad ds se
+findQuad _       n                  = n
 
-modifyPath :: Eq a => (Quad a -> Quad a) -> [Direction] -> Quad a -> Quad a
-modifyPath f []     = f
-modifyPath f (d:ds) = collapse . modify' . expand
+modifyQuad :: Eq a => (Quad a -> Quad a) -> [Direction] -> Quad a -> Quad a
+modifyQuad f []     = f
+modifyQuad f (d:ds) = collapse . modify' . expand
     where modify' (Node nw ne sw se) =
-            case d of   NW -> Node (modifyPath f ds nw) ne sw se
-                        NE -> Node nw (modifyPath f ds ne) sw se
-                        SW -> Node nw ne (modifyPath f ds sw) se
-                        SE -> Node nw ne sw (modifyPath f ds se)
+            case d of   NW -> Node (modifyQuad f ds nw) ne sw se
+                        NE -> Node nw (modifyQuad f ds ne) sw se
+                        SW -> Node nw ne (modifyQuad f ds sw) se
+                        SE -> Node nw ne sw (modifyQuad f ds se)
 
-over' :: Eq a => (Quad a -> Quad a) -> [Direction] -> Quadtree a -> Quadtree a
-over' f pos (Quadtree h q) = Quadtree h $ modifyPath f pos q
+insertFn :: Quad a -> Quad a -> Quad a
+insertFn = const
 
-set' :: Eq a => a -> [Direction] -> Quadtree a -> Quadtree a
-set' v = over' (\_ -> Leaf v)
+deleteFn :: Quad a -> Quad a
+deleteFn = insertFn Empty
 
-delete' :: Eq a => [Direction] -> Quadtree a -> Quadtree a
-delete' = over' (const Empty)
+insertQuad :: Eq a => Quad a -> [Direction] -> Quad a -> Quad a
+insertQuad v = modifyQuad (insertFn v)
 
-view' :: Eq a => [Direction] -> Quadtree a -> Quad a
-view' pos (Quadtree _ q) = findPath pos q
+deleteQuad :: Eq a => [Direction] -> Quad a -> Quad a
+deleteQuad = modifyQuad deleteFn
 
 step :: (Bool, Bool) -> Direction
 step (False, False) = NW
@@ -62,24 +60,21 @@ step (True , False) = NE
 step (False, True ) = SW
 step (True , True ) = SE
 
-pathTo' :: Vec2 -> Int -> [Direction]
-pathTo' _     0 = []
-pathTo' (x,y) h = step (xb,yb):pathTo' (x,y) h'
-    where   h' = h - 1
-            xb = testBit x h'
-            yb = testBit y h'
+posbits :: Int -> Vec2 -> [(Bool, Bool)]
+posbits 0 _     = []
+posbits h (x,y) = (testBit x h, testBit y h):posbits (h-1) (x,y)
 
-pathTo :: Vec2 -> Quadtree t -> [Direction]
-pathTo pt (Quadtree h _) = pathTo' pt h
+at :: Int -> Vec2 -> [Direction]
+at h pos   = map step (posbits h pos)
 
-over :: Eq a => (Quad a -> Quad a) -> Vec2 -> Quadtree a -> Quadtree a
-over f pos qt = over' f (pathTo pos qt) qt
-
-set :: Eq a => a -> Vec2 -> Quadtree a -> Quadtree a
-set v pos qt = set' v (pathTo pos qt) qt
+insert :: Eq a => a -> Vec2 -> Quadtree a -> Quadtree a
+insert v pos (Quadtree h q) = Quadtree h $ insertQuad (Leaf v) (at h pos) q
 
 delete :: Eq a => Vec2 -> Quadtree a -> Quadtree a
-delete pos qt = delete' (pathTo pos qt) qt
+delete pos (Quadtree h q) = Quadtree h $ deleteQuad (at h pos) q
 
-view :: Eq a => Vec2 -> Quadtree a -> Quad a
-view pos qt = view' (pathTo pos qt) qt
+lookup :: Eq a => Vec2 -> Quadtree a -> a
+lookup pos (Quadtree h q) =
+    case findQuad (at h pos) q of
+        Leaf a  -> a
+

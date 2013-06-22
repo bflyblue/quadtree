@@ -1,11 +1,11 @@
-import Control.Monad
-import Quadtree2
+import Quadtree
+import Data.List (foldl')
 
 main :: IO ()
 main = do
-    let z = return zipper
-        s az (x,y,z) = az >>= to (x,y) >>= set (Leaf z)
-        z' = foldl s z [(x,y,x*y) | x <- [0..1023], y <- [0..1023]]
-        d (Just (Zipper _ h _)) = h
-    print $ d (z' >>= top)
-    --print $ z' >>= top
+    let t = Quadtree 10 Empty
+        s az (x,y,z) = insert z (x,y) az
+        t' = foldl' s t [(x,y,x*y) | x <- [0..2047], y <- [0..2047]]
+        v = foldl' (+) 0 [Quadtree.lookup (x,y) t' | x <- [0..2047], y <- [0..2047]]
+
+    print v
