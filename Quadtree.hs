@@ -15,7 +15,7 @@ data Quad a = Node !(Quad a) !(Quad a) !(Quad a) !(Quad a)
 
 data Direction = NW | NE | SW | SE deriving (Eq, Ord, Bounded, Enum, Show)
 
-type Scalar = Word
+type Scalar = Word8
 type Vec2   = (Scalar, Scalar)
 
 expand :: Quad a -> Quad a
@@ -89,7 +89,7 @@ findDefault dflt pos q =
 orderPos :: (Vec2, Vec2) -> (Vec2, Vec2)
 orderPos ((a,b),(c,d)) | a <= c && b <= d = ((a,b),(c,d))
                        | a <= c && b >  d = ((a,d),(c,b))
-                       | a >  c && b <= d = ((c,d),(a,b))
+                       | a >  c && b <= d = ((c,b),(a,d))
                        | a >  c && b >  d = ((c,d),(a,b))
 
 atR :: Int -> (Vec2, Vec2) -> [[Direction]]
