@@ -80,6 +80,12 @@ find pos q =
         Leaf v  -> v
         _       -> error "find: not leaf"
 
+findDefault :: Eq a => a -> Vec2 -> Quadtree a -> a
+findDefault dflt pos q =
+    case Quadtree.lookup pos q of
+        Leaf v  -> v
+        _       -> dflt
+
 orderPos :: (Vec2, Vec2) -> (Vec2, Vec2)
 orderPos ((a,b),(c,d)) | a <= c && b <= d = ((a,b),(c,d))
                        | a <= c && b >  d = ((a,d),(c,b))
@@ -101,6 +107,10 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
                                          map (NE:) (atR' ([], js, [], [])) ++
                                          map (SW:) (atR' ([], [], ks, [])) ++
                                          map (SE:) (atR' ([], [], [], ls))
+                        ( _, _, _,NW) -> map (NW:) (atR' (is, js, ks, ls))
+                        ( _, _,NE, _) -> map (NE:) (atR' (is, js, ks, ls))
+                        ( _,SW, _, _) -> map (SW:) (atR' (is, js, ks, ls))
+                        (SE, _, _, _) -> map (SE:) (atR' (is, js, ks, ls))
                         ( _, _,NW, _) -> map (NW:) (atR' (is, [], ks, [])) ++
                                          map (NE:) (atR' ([], js, [], ls))
                         ( _, _, _,NE) -> map (NW:) (atR' (is, [], ks, [])) ++
@@ -117,13 +127,18 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
                                          map (SW:) (atR' ([], [], ks, ls))
                         ( _, _, _,SW) -> map (NW:) (atR' (is, ks, [], [])) ++
                                          map (SW:) (atR' ([], [], ks, ls))
-                        ( _, _, _,NW) -> map (NW:) (atR' (is, js, ks, ls))
-                        ( _, _,NE, _) -> map (NE:) (atR' (is, js, ks, ls))
-                        ( _,SW, _, _) -> map (SW:) (atR' (is, js, ks, ls))
-                        (SE, _, _, _) -> map (SE:) (atR' (is, js, ks, ls))
-                        _             -> error $ "bad partial" ++ show (is', js', ks', ls')
+                        -- _             -> error $ "bad partial" ++ show (is', js', ks', ls')
             match md []     = (md,[])
             match _  (x:xs) = (x,xs)
 
 modifyRange :: Eq a => (Quad a -> Quad a) -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
 modifyRange f rng (Quadtree h q) = Quadtree h .  foldl (.) id (map (modifyQuad f) (atR h rng)) $ q
+
+setRange :: Eq a => Quad a -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
+setRange v = modifyRange (const v)
+
+insertRange :: Eq a => a -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
+insertRange = setRange . Leaf
+
+deleteRange :: Eq a => (Vec2,Vec2) -> Quadtree a -> Quadtree a
+deleteRange = setRange Empty
