@@ -42,18 +42,6 @@ modifyQuad f (d:ds) = collapse . modify' . expand
                         SW -> Node nw ne (modifyQuad f ds sw) se
                         SE -> Node nw ne sw (modifyQuad f ds se)
 
-insertFn :: Quad a -> Quad a -> Quad a
-insertFn = const
-
-deleteFn :: Quad a -> Quad a
-deleteFn = insertFn Empty
-
-insertQuad :: Eq a => Quad a -> [Direction] -> Quad a -> Quad a
-insertQuad v = modifyQuad (insertFn v)
-
-deleteQuad :: Eq a => [Direction] -> Quad a -> Quad a
-deleteQuad = modifyQuad deleteFn
-
 step :: (Bool, Bool) -> Direction
 step (False, False) = NW
 step (True , False) = NE
@@ -67,14 +55,21 @@ posbits h (x,y) = (testBit x h, testBit y h):posbits (h-1) (x,y)
 at :: Int -> Vec2 -> [Direction]
 at h pos   = map step (posbits h pos)
 
+modify :: Eq a => (Quad a -> Quad a) -> Vec2 -> Quadtree a -> Quadtree a
+modify f pos (Quadtree h q) = Quadtree h . modifyQuad f (at h pos) $ q
+
 insert :: Eq a => a -> Vec2 -> Quadtree a -> Quadtree a
-insert v pos (Quadtree h q) = Quadtree h $ insertQuad (Leaf v) (at h pos) q
+insert v = modify (const (Leaf v))
 
 delete :: Eq a => Vec2 -> Quadtree a -> Quadtree a
-delete pos (Quadtree h q) = Quadtree h $ deleteQuad (at h pos) q
+delete = modify (const Empty)
 
-lookup :: Eq a => Vec2 -> Quadtree a -> a
-lookup pos (Quadtree h q) =
-    case findQuad (at h pos) q of
-        Leaf a  -> a
+lookup :: Eq a => Vec2 -> Quadtree a -> Quad a
+lookup pos (Quadtree h q) = findQuad (at h pos) q
+
+find :: Eq a => Vec2 -> Quadtree a -> a
+find pos q =
+    case Quadtree.lookup pos q of
+        Leaf v  -> v
+        _       -> error "find: not leaf"
 
