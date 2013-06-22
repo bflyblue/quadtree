@@ -89,7 +89,7 @@ findDefault dflt pos q =
 orderPos :: (Vec2, Vec2) -> (Vec2, Vec2)
 orderPos ((a,b),(c,d)) | a <= c && b <= d = ((a,b),(c,d))
                        | a <= c && b >  d = ((a,d),(c,b))
-                       | a >  c && b >  d = ((c,d),(a,b))
+                       | a >  c && b <= d = ((c,d),(a,b))
                        | a >  c && b >  d = ((c,d),(a,b))
 
 atR :: Int -> (Vec2, Vec2) -> [[Direction]]
