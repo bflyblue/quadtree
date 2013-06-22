@@ -46,50 +46,31 @@ modifyQuad f (d:ds) = collapse . modify' . expand
 fullcoverage :: [Direction] -> [Direction] -> Bool
 fullcoverage as bs = all (== NW) as && all (== SE) bs
 
+partial :: (t -> ([Direction], [Direction]) -> Quad a -> Quad a) -> t -> ([Direction], [Direction]) -> Quad a -> Quad a
+partial f g (a:as,b:bs) (Node nw ne sw se) =
+    case (a,b) of
+        (NW,NW) -> Node (f' nw) ne sw se
+        (NE,NE) -> Node nw (f' ne) sw se
+        (SW,SW) -> Node nw se (f' sw) se
+        (SE,SE) -> Node nw se sw (f' se)
+
+        (NW,NE) -> f' nw `par` f' ne `pseq` Node (f' nw) (f' ne) sw se
+        (SW,SE) -> f' sw `par` f' se `pseq` Node nw ne (f' sw) (f' se)
+        (NW,SW) -> f' nw `par` f' sw `pseq` Node (f' nw) ne (f' sw) se
+        (NE,SE) -> f' ne `par` f' se `pseq` Node nw (f' ne) sw (f' se)
+
+        _       -> f' nw `par` f' ne `par` f' sw `par` f' se `pseq` Node (f' nw) (f' ne) (f' sw) (f' se)
+    where f' = f g (as,bs)
+
 modifyQuadR :: Eq a => (Quad a -> Quad a) -> ([Direction], [Direction]) -> Quad a -> Quad a
 modifyQuadR f (as,bs) Empty    | fullcoverage as bs = f Empty
 modifyQuadR f (as,bs) (Leaf a) | fullcoverage as bs = f (Leaf a)
-modifyQuadR f (a:as,b:bs) q = collapse . modify' . expand $ q
-    where   modify' (Node nw ne sw se) =
-                case (a,b) of
-                    (NW,NW) -> Node (m' nw) ne sw se
-                    (NE,NE) -> Node nw (m' ne) sw se
-                    (SW,SW) -> Node nw se (m' sw) se
-                    (SE,SE) -> Node nw se sw (m' se)
-
-                    (NW,NE) -> m' nw `par` m' ne `pseq` Node (m' nw) (m' ne) sw se
-                    (SW,SE) -> m' sw `par` m' se `pseq` Node nw ne (m' sw) (m' se)
-                    (NW,SW) -> m' nw `par` m' sw `pseq` Node (m' nw) ne (m' sw) se
-                    (NE,SE) -> m' ne `par` m' se `pseq` Node nw (m' ne) sw (m' se)
-
-                    (NW,SE) -> m' nw `par` m' ne `par` m' sw `par` m' se `pseq`
-                               Node (m' nw) (m' ne) (m' sw) (m' se)
-            m' = modifyQuadR f (as,bs)
-modifyQuadR f _           q = f q
+modifyQuadR f (as,bs) q        = collapse . partial modifyQuadR f (as,bs) . expand $ q
 
 setQuadR :: Eq a => Quad a -> ([Direction], [Direction]) -> Quad a -> Quad a
 setQuadR v (as,bs) Empty    | fullcoverage as bs = v
 setQuadR v (as,bs) (Leaf _) | fullcoverage as bs = v
-setQuadR v (_,[])      _ = v
-setQuadR v (a:as,b:bs) q = collapse . set' . expand $ q
-    where   set' (Node nw ne sw se) =
-                case (a,b) of
-                    (NW,NW) -> Node (s' nw) ne sw se
-                    (NE,NE) -> Node nw (s' ne) sw se
-                    (SW,SW) -> Node nw se (s' sw) se
-                    (SE,SE) -> Node nw se sw (s' se)
-
-                    (NW,NE) -> s' nw `par` s' ne `pseq` Node (s' nw) (s' ne) sw se
-                    (SW,SE) -> s' sw `par` s' se `pseq` Node nw ne (s' sw) (s' se)
-                    (NW,SW) -> s' nw `par` s' sw `pseq` Node (s' nw) ne (s' sw) se
-                    (NE,SE) -> s' ne `par` s' se `pseq` Node nw (s' ne) sw (s' se)
-
-                    (NW,SE) -> if fullcoverage as bs
-                               then v
-                               else s' nw `par` s' ne `par` s' sw `par` s' se `pseq`
-                                    Node (s' nw) (s' ne) (s' sw) (s' se)
-            s' = setQuadR v (as,bs)
-setQuadR v _           _ = v
+setQuadR v (as,bs) q        = collapse . partial setQuadR v (as,bs) . expand $ q
 
 step :: (Bool, Bool) -> Direction
 step (False, False) = NW
