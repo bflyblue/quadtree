@@ -93,16 +93,16 @@ orderPos ((a,b),(c,d)) | a <= c && b <= d = ((a,b),(c,d))
 
 clampN = map (\x -> case x of   SW -> NW
                                 SE -> NE
-                                x' -> x')
+                                _  -> x )
 clampS = map (\x -> case x of   NW -> SW
                                 NE -> SE
-                                x' -> x')
+                                _  -> x )
 clampW = map (\x -> case x of   NE -> NW
                                 SE -> SW
-                                x' -> x')
+                                _  -> x )
 clampE = map (\x -> case x of   NW -> NE
                                 SW -> SE
-                                x' -> x')
+                                _  -> x )
 
 atR :: Int -> (Vec2, Vec2) -> [[Direction]]
 atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
@@ -127,16 +127,17 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
                                             map (SE:) (atR' (clampW is, js, clampW ks, ls))
 
                         (NW, NW, SW, SW) -> map (NW:) (atR' (is, js, clampS ks, clampS ls)) ++
-                                            map (SW:) (atR' (is, js, clampN js, clampN ls))
+                                            map (SW:) (atR' (is, js, clampN ks, clampN ls))
 
                         (NE, NE, SE, SE) -> map (NE:) (atR' (is, js, clampS ks, clampS ls)) ++
-                                            map (SE:) (atR' (is, js, clampN js, clampN ls))
+                                            map (SE:) (atR' (is, js, clampN ks, clampN ls))
 
                         (NW, NW, NW, NW) -> map (NW:) (atR' (is, js, ks, ls))
                         (NE, NE, NE, NE) -> map (NE:) (atR' (is, js, ks, ls))
                         (SW, SW, SW, SW) -> map (SW:) (atR' (is, js, ks, ls))
                         (SE, SE, SE, SE) -> map (SE:) (atR' (is, js, ks, ls))
                         _                -> error $ "atR broken" ++ show [is', js', ks', ls']
+                        -- _                -> [[]]
 
             match md []     = (md,[])
             match _  (x:xs) = (x,xs)
