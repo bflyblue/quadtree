@@ -85,25 +85,6 @@ findDefault dflt pos q =
         Leaf v  -> v
         _       -> dflt
 
-orderPos :: (Vec2, Vec2) -> (Vec2, Vec2)
-orderPos ((a,b),(c,d)) | a <= c && b <= d = ((a,b),(c,d))
-                       | a <= c && b >  d = ((a,d),(c,b))
-                       | a >  c && b <= d = ((c,b),(a,d))
-                       | a >  c && b >  d = ((c,d),(a,b))
-
-clampN = map (\x -> case x of   SW -> NW
-                                SE -> NE
-                                _  -> x )
-clampS = map (\x -> case x of   NW -> SW
-                                NE -> SE
-                                _  -> x )
-clampW = map (\x -> case x of   NE -> NW
-                                SE -> SW
-                                _  -> x )
-clampE = map (\x -> case x of   NW -> NE
-                                SW -> SE
-                                _  -> x )
-
 atR :: Int -> (Vec2, Vec2) -> [[Direction]]
 atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
     where   ((a,b),(c,d)) = orderPos r
@@ -137,10 +118,28 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
                         (SW, SW, SW, SW) -> map (SW:) (atR' (is, js, ks, ls))
                         (SE, SE, SE, SE) -> map (SE:) (atR' (is, js, ks, ls))
                         _                -> error $ "atR broken" ++ show [is', js', ks', ls']
-                        -- _                -> [[]]
 
             match md []     = (md,[])
             match _  (x:xs) = (x,xs)
+            clampN = map (\x -> case x of   SW -> NW
+                                            SE -> NE
+                                            _  -> x )
+            clampS = map (\x -> case x of   NW -> SW
+                                            NE -> SE
+                                            _  -> x )
+            clampW = map (\x -> case x of   NE -> NW
+                                            SE -> SW
+                                            _  -> x )
+            clampE = map (\x -> case x of   NW -> NE
+                                            SW -> SE
+                                            _  -> x )
+            orderPos ((a',b'),(c',d'))
+                | a' <= c' && b' <= d' = ((a',b'),(c',d'))
+                | a' <= c' && b' >  d' = ((a',d'),(c',b'))
+                | a' >  c' && b' <= d' = ((c',b'),(a',d'))
+                | a' >  c' && b' >  d' = ((c',d'),(a',b'))
+
+
 
 
 modifyRange :: Eq a => (Quad a -> Quad a) -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
