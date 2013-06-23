@@ -89,7 +89,7 @@ findDefault dflt pos q =
 atR :: Int -> (Vec2, Vec2) -> [[Direction]]
 atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
     where   ((a,b),(c,d)) = orderPos r
-            at' rd pos = reverse $ dropWhile (==rd) $ reverse $ at h pos
+            at' rd = reverse . dropWhile (==rd) . reverse . at h
             atR' ( [],  [],  [],  []) = [[]]
             atR' (is', js', ks', ls') =
                 let (i,is) = match NW is'
