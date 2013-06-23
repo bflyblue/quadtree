@@ -109,7 +109,7 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
     where   ((a,b),(c,d)) = orderPos r
             at' rd pos = reverse $ dropWhile (==rd) $ reverse $ at h pos
             atR' ( [],  [],  [],  []) = [[]]
-            atR' (is', ks', js', ls') =
+            atR' (is', js', ks', ls') =
                 let (i,is) = match NW is'
                     (j,js) = match NE js'
                     (k,ks) = match SW ks'
@@ -127,10 +127,10 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
                                             map (SE:) (atR' (clampW is, js, clampW ks, ls))
 
                         (NW, NW, SW, SW) -> map (NW:) (atR' (is, js, clampS ks, clampS ls)) ++
-                                            map (SW:) (atR' (is, js, clampN ks, clampN ls))
+                                            map (SW:) (atR' (clampN is, clampN js, ks, ls))
 
                         (NE, NE, SE, SE) -> map (NE:) (atR' (is, js, clampS ks, clampS ls)) ++
-                                            map (SE:) (atR' (is, js, clampN ks, clampN ls))
+                                            map (SE:) (atR' (clampN is, clampN js, ks, ls))
 
                         (NW, NW, NW, NW) -> map (NW:) (atR' (is, js, ks, ls))
                         (NE, NE, NE, NE) -> map (NE:) (atR' (is, js, ks, ls))
