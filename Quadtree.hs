@@ -99,10 +99,10 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
                       _,    [])             = [[]]
             atR' (    _,    [],
                      [],     _)             = [[]]
-            atR' (i:is,   [],   [],   []) = map ( i:) (atR' (is, [], [], []))
-            atR' (  [], j:js,   [],   []) = map ( j:) (atR' ([], js, [], []))
-            atR' (  [],   [], k:ks,   []) = map ( k:) (atR' ([], [], ks, []))
-            atR' (  [],   [],   [], l:ls) = map ( l:) (atR' ([], [], [], ls))
+            atR' (i:is,   js,   [],   ks) = map ( i:) (atR' (is, js, [], ks))
+            atR' (  is, j:js,   [],   ks) = map ( j:) (atR' (is, js, [], ks))
+            atR' (  is,   [], k:ks,   ls) = map ( k:) (atR' (is, [], ks, ls))
+            atR' (  [],   js,   ks, l:ls) = map ( l:) (atR' ([], js, ks, ls))
             atR' (i:is, j:js,   [],   [])
                               | i == j    = map ( i:) (atR' (is, js, [], []))
                               | otherwise = map ( i:) (atR' (is, [], [], [])) ++
