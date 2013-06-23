@@ -118,6 +118,7 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
                         (NE, NE, NE, NE) -> map (NE:) (atR' (is, js, ks, ls))
                         (SW, SW, SW, SW) -> map (SW:) (atR' (is, js, ks, ls))
                         (SE, SE, SE, SE) -> map (SE:) (atR' (is, js, ks, ls))
+
                         _                -> error $ "atR broken" ++ show [is', js', ks', ls']
 
             match md []     = (md,[])
