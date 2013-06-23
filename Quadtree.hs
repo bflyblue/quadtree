@@ -142,8 +142,7 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
 
 modifyRange :: Eq a => (Quad a -> Quad a) -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
 modifyRange f rng (Quadtree h q) = Quadtree h q'
-    where q' = foldl' mq q (atR h rng)
-          mq = flip (modifyQuad f)
+    where q' = foldl' (flip $ modifyQuad f) q (atR h rng)
 
 setRange :: Eq a => Quad a -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
 setRange v = modifyRange (const v)
