@@ -57,7 +57,7 @@ posbits h (x,y) = (testBit x h', testBit y h'):posbits h' (x,y)
                   where h' = h - 1
 
 at :: Int -> Vec2 -> [Direction]
-at h pos = map step $ posbits h pos
+at h = map step . posbits h
 
 modify :: Eq a => (Quad a -> Quad a) -> Vec2 -> Quadtree a -> Quadtree a
 modify f pos (Quadtree h q) = Quadtree h . modifyQuad f (at h pos) $ q
@@ -154,16 +154,9 @@ insertRange = setRange . Leaf
 deleteRange :: Eq a => (Vec2,Vec2) -> Quadtree a -> Quadtree a
 deleteRange = setRange Empty
 
-findQuad' :: Eq a => [Direction] -> Quad a -> ([Direction], Quad a)
-findQuad' (NW:ds) (Node nw _  _  _ ) = findQuad' ds nw
-findQuad' (NE:ds) (Node _  ne _  _ ) = findQuad' ds ne
-findQuad' (SW:ds) (Node _  _  sw _ ) = findQuad' ds sw
-findQuad' (SE:ds) (Node _  _  _  se) = findQuad' ds se
-findQuad' ds      n                  = (ds, n)
-
-ray :: Int -> (Vec2, Vec2) -> [[Direction]]
-ray h ((a,b),(c,d)) =
-    let (dx, dy) =  if abs (c - a) >= abs (d - b)
-                    then (1, (d - b) % (c - a))
-                    else ((c - a) % (d - b), 1)
-    in undefined
+-- ray :: Int -> (Vec2, Vec2) -> [[Direction]]
+-- ray h ((a,b),(c,d)) =
+--     let (dx, dy) =  if abs (c - a) >= abs (d - b)
+--                     then (1, (d - b) % (c - a))
+--                     else ((c - a) % (d - b), 1)
+--     in undefined
