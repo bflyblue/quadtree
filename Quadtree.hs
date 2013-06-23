@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-
 module Quadtree
 where
 
@@ -143,7 +141,9 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
                 | a' >  c' && b' >  d' = ((c',d'),(a',b'))
 
 modifyRange :: Eq a => (Quad a -> Quad a) -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
-modifyRange f rng (Quadtree h q) = Quadtree h . foldl' (.) id (map (modifyQuad f) (atR h rng)) $ q
+modifyRange f rng (Quadtree h q) = Quadtree h q'
+    where q' = foldl' mq q (atR h rng)
+          mq = flip (modifyQuad f)
 
 setRange :: Eq a => Quad a -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
 setRange v = modifyRange (const v)
