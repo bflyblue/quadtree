@@ -91,55 +91,56 @@ orderPos ((a,b),(c,d)) | a <= c && b <= d = ((a,b),(c,d))
                        | a >  c && b <= d = ((c,b),(a,d))
                        | a >  c && b >  d = ((c,d),(a,b))
 
+clampN = map (\x -> case x of   SW -> NW
+                                SE -> NE
+                                x' -> x')
+clampS = map (\x -> case x of   NW -> SW
+                                NE -> SE
+                                x' -> x')
+clampW = map (\x -> case x of   NE -> NW
+                                SE -> SW
+                                x' -> x')
+clampE = map (\x -> case x of   NW -> NE
+                                SW -> SE
+                                x' -> x')
+
 atR :: Int -> (Vec2, Vec2) -> [[Direction]]
 atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
     where   ((a,b),(c,d)) = orderPos r
             at' rd pos = reverse $ dropWhile (==rd) $ reverse $ at h pos
-            atR' (   [],     _,
-                      _,    [])             = [[]]
-            atR' (    _,    [],
-                     [],     _)             = [[]]
-            atR' (i:is,   js,   [],   ks) = map ( i:) (atR' (is, js, [], ks))
-            atR' (  is, j:js,   [],   ks) = map ( j:) (atR' (is, js, [], ks))
-            atR' (  is,   [], k:ks,   ls) = map ( k:) (atR' (is, [], ks, ls))
-            atR' (  [],   js,   ks, l:ls) = map ( l:) (atR' ([], js, ks, ls))
-            atR' (i:is, j:js,   [],   [])
-                              | i == j    = map ( i:) (atR' (is, js, [], []))
-                              | otherwise = map ( i:) (atR' (is, [], [], [])) ++
-                                            map ( j:) (atR' ([], js, [], []))
-            atR' (i:is,   [], k:ks,   [])
-                              | i == k    = map ( i:) (atR' (is, [], ks, []))
-                              | otherwise = map ( i:) (atR' (is, [], [], [])) ++
-                                            map ( k:) (atR' ([], [], ks, []))
-            atR' (  [],   [], k:ks, l:ls)
-                              | k == l    = map ( k:) (atR' ([], [], ks, ls))
-                              | otherwise = map ( k:) (atR' ([], [], ks, [])) ++
-                                            map ( l:) (atR' ([], [], [], ls))
-            atR' (  [], j:js,   [], l:ls)
-                              | j == l    = map ( j:) (atR' ([], js, [], ls))
-                              | otherwise = map ( j:) (atR' ([], js, [], [])) ++
-                                            map ( l:) (atR' ([], [], [], ls))
-            atR' (  [], j:js, k:ks, l:ls) = atR' ([NW], j:js, k:ks, l:ls)
-            atR' (i:is,   [], k:ks, l:ls) = atR' (i:is, [NE], k:ks, l:ls)
-            atR' (i:is, j:js,   [], l:ls) = atR' (i:is, j:js, [SW], l:ls)
-            atR' (i:is, j:js, k:ks,   []) = atR' (i:is, j:js, k:ks, [SE])
-            atR' (i:is, j:js, k:ks, l:ls)
-                              | i == j &&
-                                j == k &&
-                                k == l    = map ( i:) (atR' (is, js, ks, ls))
-                              | i == j &&
-                                k == l    = map ( i:) (atR' (is, js, [], [])) ++
-                                            map ( k:) (atR' ([], [], ks, ls))
-                              | i == k &&
-                                j == l    = map ( i:) (atR' (is, [], ks, [])) ++
-                                            map ( j:) (atR' ([], js, [], ls))
-                              | otherwise = map ( i:) (atR' (is, [], [], [])) ++
-                                            map ( j:) (atR' ([], js, [], [])) ++
-                                            map ( k:) (atR' ([], [], ks, [])) ++
-                                            map ( l:) (atR' ([], [], [], ls))
+            atR' ( [],  [],  [],  []) = [[]]
+            atR' (is', ks', js', ls') =
+                let (i,is) = match NW is'
+                    (j,js) = match NE js'
+                    (k,ks) = match SW ks'
+                    (l,ls) = match SE ls'
+                in  case (i, j, k, l) of
+                        (NW, NE, SW, SE) -> map (NW:) (atR' (is, clampE js, clampS ks, [])) ++
+                                            map (NE:) (atR' (clampW is, js, [], clampS ls)) ++
+                                            map (SW:) (atR' (clampN is, [], ks, clampE ls)) ++
+                                            map (SE:) (atR' ([], clampN js, clampW ks, ls))
 
-            -- match md []     = (md,[])
-            -- match _  (x:xs) = (x,xs)
+                        (NW, NE, NW, NE) -> map (NW:) (atR' (is, clampE js, ks, clampE ls)) ++
+                                            map (NE:) (atR' (clampW is, js, clampW ks, ls))
+
+                        (SW, SE, SW, SE) -> map (SW:) (atR' (is, clampE js, ks, clampE ls)) ++
+                                            map (SE:) (atR' (clampW is, js, clampW ks, ls))
+
+                        (NW, NW, SW, SW) -> map (NW:) (atR' (is, js, clampS ks, clampS ls)) ++
+                                            map (SW:) (atR' (is, js, clampN js, clampN ls))
+
+                        (NE, NE, SE, SE) -> map (NE:) (atR' (is, js, clampS ks, clampS ls)) ++
+                                            map (SE:) (atR' (is, js, clampN js, clampN ls))
+
+                        (NW, NW, NW, NW) -> map (NW:) (atR' (is, js, ks, ls))
+                        (NE, NE, NE, NE) -> map (NE:) (atR' (is, js, ks, ls))
+                        (SW, SW, SW, SW) -> map (SW:) (atR' (is, js, ks, ls))
+                        (SE, SE, SE, SE) -> map (SE:) (atR' (is, js, ks, ls))
+                        _                -> error $ "atR broken" ++ show [is', js', ks', ls']
+
+            match md []     = (md,[])
+            match _  (x:xs) = (x,xs)
+
 
 modifyRange :: Eq a => (Quad a -> Quad a) -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
 modifyRange f rng (Quadtree h q) = Quadtree h .  foldl (.) id (map (modifyQuad f) (atR h rng)) $ q
