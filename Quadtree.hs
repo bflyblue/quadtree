@@ -1,8 +1,11 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Quadtree
 where
 
 import Data.Bits
 import Data.Word
+import Data.List
 
 data Quadtree a = Quadtree !Int !(Quad a)
                 deriving (Eq, Show)
@@ -14,7 +17,7 @@ data Quad a = Node !(Quad a) !(Quad a) !(Quad a) !(Quad a)
 
 data Direction = NW | NE | SW | SE deriving (Eq, Ord, Bounded, Enum, Show)
 
-type Scalar = Word8
+type Scalar = Word
 type Vec2   = (Scalar, Scalar)
 
 expand :: Quad a -> Quad a
@@ -140,7 +143,7 @@ atR h r = atR' (at' NW (a,b), at' NE (c,b), at' SW (a,d), at' SE (c,d))
                 | a' >  c' && b' >  d' = ((c',d'),(a',b'))
 
 modifyRange :: Eq a => (Quad a -> Quad a) -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
-modifyRange f rng (Quadtree h q) = Quadtree h . foldl (.) id (map (modifyQuad f) (atR h rng)) $ q
+modifyRange f rng (Quadtree h q) = Quadtree h . foldl' (.) id (map (modifyQuad f) (atR h rng)) $ q
 
 setRange :: Eq a => Quad a -> (Vec2,Vec2) -> Quadtree a -> Quadtree a
 setRange v = modifyRange (const v)
