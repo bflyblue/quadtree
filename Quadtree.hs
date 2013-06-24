@@ -173,9 +173,9 @@ pathRange :: [Direction] -> Int -> (Vec2,Vec2)
 pathRange ds h =
     let (ph, (x,y)) = pathbits ds
         h'          = h - ph
-        (_,(x',y')) = pathbits (replicate h' SE)
+        size        = bit h'
         (a,b)       = (shiftL x h', shiftL y h')
-        (c,d)       = (a + x', b + y')
+        (c,d)       = (a + size, b + size)
     in  ((a, b), (c, d))
 
 findQuad' :: Eq a => [Direction] -> Quad a -> Quad a
