@@ -3,7 +3,7 @@ where
 
 import Data.Bits
 import Data.List
-import Data.Ratio
+-- import Data.Ratio
 import Data.Word
 
 data Quadtree a = Quadtree !Int !(Quad a)
@@ -153,6 +153,37 @@ insertRange = setRange . Leaf
 
 deleteRange :: Eq a => (Vec2,Vec2) -> Quadtree a -> Quadtree a
 deleteRange = setRange Empty
+
+step' :: Direction -> Vec2
+step' NW = (0, 0)
+step' NE = (1, 0)
+step' SW = (0, 1)
+step' SE = (1, 1)
+
+pathbits :: [Direction] -> (Int, Vec2)
+pathbits []     = (0,  (0 , 0 ))
+pathbits (d:ds) = (h', (x', y'))
+    where   (h, (x, y)) = pathbits ds
+            h'          = h + 1
+            (xb, yb)    = step' d
+            sb i b      = i .|. shiftL b h
+            (x', y')    = (sb x xb, sb y yb)
+
+pathRange :: [Direction] -> Int -> (Vec2,Vec2)
+pathRange ds h =
+    let (ph, (x,y)) = pathbits ds
+        h'          = h - ph
+        (_,(x',y')) = pathbits (replicate h' SE)
+        (a,b)       = (shiftL x h', shiftL y h')
+        (c,d)       = (a + x', b + y')
+    in  ((a, b), (c, d))
+
+findQuad' :: Eq a => [Direction] -> Quad a -> Quad a
+findQuad' (NW:ds) (Node nw _  _  _ ) = findQuad' ds nw
+findQuad' (NE:ds) (Node _  ne _  _ ) = findQuad' ds ne
+findQuad' (SW:ds) (Node _  _  sw _ ) = findQuad' ds sw
+findQuad' (SE:ds) (Node _  _  _  se) = findQuad' ds se
+findQuad' _       n                  = n
 
 -- ray :: Int -> (Vec2, Vec2) -> [[Direction]]
 -- ray h ((a,b),(c,d)) =
